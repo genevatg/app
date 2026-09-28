@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#183b63"><title>Geneva TG Coordination — V3</title>
+<style>
+*{box-sizing:border-box} body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f4f7fb;color:#172334;padding-bottom:88px}
+header{background:linear-gradient(135deg,#173b64,#316795);color:white;padding:22px 18px 25px;border-radius:0 0 28px 28px} header h1{margin:5px 0} .wrap{max-width:980px;margin:auto;padding:16px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px} .card,.item{background:white;border-radius:18px;padding:15px;box-shadow:0 4px 18px #183b6312;margin:9px 0}
+.card b{font-size:26px} .muted{color:#687687;font-size:13px} .badge{display:inline-block;border-radius:20px;padding:5px 9px;font-size:11px;background:#eaf0f7;color:#315f8f}
+.red{background:#fdeaea;color:#a62e2e} .orange{background:#fff3d8;color:#855f00} .green{background:#e8f7ed;color:#287044} .blue{background:#e8f1fb;color:#285e96}
+h2{font-size:20px;margin:20px 2px 10px} h3{margin:5px 0} button{font:inherit} .primary{border:0;background:#183b63;color:white;border-radius:13px;padding:12px 14px;font-weight:700}
+.secondary{border:1px solid #cdd8e4;background:white;color:#183b63;border-radius:13px;padding:11px 13px} .row{display:flex;justify-content:space-between;gap:10px;align-items:center}
+nav{position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid #dce4ed;display:flex;justify-content:space-around;padding:7px 2px calc(7px + env(safe-area-inset-bottom));z-index:20}
+nav button{border:0;background:none;color:#697788;font-size:10px} nav strong{display:block;font-size:19px} nav .active{color:#183b63;font-weight:700}
+.page{display:none} .page.active{display:block} input,select,textarea{width:100%;padding:12px;border:1px solid #d9e2ec;border-radius:12px;font-size:16px;background:white}
+label{display:block;font-size:12px;color:#687687;margin:11px 0 5px} .chips{display:flex;gap:7px;overflow:auto} .chip{white-space:nowrap;border:0;border-radius:18px;padding:8px 11px;background:#e8eef5;color:#40566d}
+.modal{display:none;position:fixed;inset:0;background:#0007;z-index:30;align-items:flex-end} .modal.show{display:flex} .sheet{background:white;width:100%;max-height:91vh;overflow:auto;border-radius:25px 25px 0 0;padding:20px}
+.close{float:right;border:0;border-radius:50%;width:34px;height:34px} .hidden{display:none!important} .rolebar{display:flex;gap:7px;overflow:auto;margin-top:14px} .rolebar button{white-space:nowrap}
+.priority{border-left:5px solid #d94b4b} .nice{border-left:5px solid #4a80bd} .warnline{border-left:5px solid #e4a323}
+.small{font-size:12px} .stat{font-size:28px;font-weight:800} .full{grid-column:1/-1}
+@media(min-width:720px){.grid{grid-template-columns:repeat(4,1fr)}}
+</style></head>
+<body>
+<header><div class="small">GENEVA TAGALOG GROUP</div><h1>Coordination Hub <span class="small">V3</span></h1><div id="roleTitle">Administrator workspace</div>
+<div class="rolebar">
+<button class="secondary" onclick="setRole('admin')">Admin demo</button>
+<button class="secondary" onclick="setRole('hospitality')">Hospitality demo</button>
+<button class="secondary" onclick="setRole('trip')">Trip demo</button>
+<button class="secondary" onclick="setRole('publisher')">Publisher demo</button>
+</div></header>
+
+<main class="wrap">
+<section id="home" class="page active">
+<h2>What needs your attention?</h2>
+<div class="grid">
+<div class="card"><div class="stat" id="spkNeed">0</div><div>Speakers needed</div></div>
+<div class="card"><div class="stat">1</div><div>Hospitality needs open</div></div>
+<div class="card"><div class="stat">1</div><div>Upcoming group trip</div></div>
+<div class="card"><div class="stat">2</div><div>Financial follow-ups</div></div>
+</div>
+<div id="adminOnly"><h2>Administrator overview</h2><div class="item"><b>Access separation enabled in V3 prototype</b><div class="muted">Public Talks · Hospitality · Trips are presented as separate workspaces. Production access will be enforced by database permissions.</div></div></div>
+<div id="publisherHome" class="hidden"><h2>My Requests</h2><div class="item"><b>Hospitality volunteer request</b><div class="muted">Offer one or more services for a visiting speaker.</div><button class="primary" onclick="page('hospitality')">Open request</button></div><div class="item"><b>Cameri Assembly registration</b><div class="muted">Attendance, guests, transport, hotel and current payment status.</div><button class="primary" onclick="page('trips')">Respond</button></div></div>
+</section>
+
+<section id="talks" class="page">
+<h2>Public Talks</h2><input id="searchTalk" placeholder="Search date, speaker, congregation, talk…">
+<div id="talkList"></div>
+</section>
+
+<section id="hospitality" class="page">
+<h2>Hospitality</h2>
+<div class="item priority"><div class="row"><b>Visiting speaker — hospitality request</b><span class="badge red">1 essential open</span></div>
+<div class="muted">Publishers may offer several services. Coordinator makes the final assignment.</div></div>
+<div id="hServices"></div>
+<div class="item"><b>Targeted reminder</b><div class="muted">Only uncovered needs are included in the reminder.</div><button class="primary" onclick="alert('Reminder draft created for uncovered essential needs only.')">Create targeted reminder</button></div>
+<div class="item"><b>Travel Expense Reimbursement</b><div class="muted">Tracking only: claim form, required documents/photos, auditor review, approval and payment-status follow-up. No online payment.</div>
+<label>Claim status</label><select><option>Documents missing</option><option>Ready for auditor review</option><option>Approved</option><option>Returned for correction</option><option>Payment reported</option><option>Completed</option></select>
+<label>Supporting document</label><input type="file" accept="image/*,.pdf"></div>
+</section>
+
+<section id="trips" class="page">
+<h2>Trips & Assemblies</h2>
+<div class="item"><div class="row"><div><b>Cameri Circuit Assembly</b><div class="muted">Registration & planning prototype</div></div><span class="badge blue">Open</span></div>
+<div class="grid" style="margin-top:10px"><div><div class="stat">42</div><div class="muted">Publishers</div></div><div><div class="stat">5</div><div class="muted">Return visits</div></div><div><div class="stat">4</div><div class="muted">Bible students</div></div><div><div class="stat">51</div><div class="muted">Total</div></div></div></div>
+<div class="item"><b>My registration</b><label>Are you attending?</label><select><option>Yes</option><option>Maybe</option><option>No</option></select>
+<label>Return visits invited</label><input type="number" value="0" min="0"><label>Bible students invited</label><input type="number" value="0" min="0">
+<label>Transportation</label><select><option>I need transportation</option><option>I can drive my own car</option><option>I can provide seats</option><option>No transport needed</option></select>
+<label>Hotel</label><select><option>Hotel needed</option><option>No hotel needed</option></select></div>
+<div class="item"><b>Transport planning</b><div class="muted">Vehicle requirement recalculates from confirmed participants and private seats.</div>
+<div class="grid"><div><label>7-seat vans</label><input type="number" value="1"></div><div><label>9-seat vans</label><input type="number" value="4"></div></div>
+<label>Latest checked rental quote</label><input value="CHF 1,310"><div class="muted">Live provider pricing can be connected later where a selected rental provider offers a supported API.</div></div>
+<div class="item"><b>Hotel planning</b><div class="muted">Rooms required · room assignments · nights · estimated cost · remaining rooms.</div><div class="grid"><div><label>Rooms required</label><input type="number" value="25"></div><div><label>Rooms booked</label><input type="number" value="20"></div></div></div>
+<div class="item"><b>Financial status tracking</b><div class="muted">No payment is processed in this website.</div><label>Amount requested</label><input value="CHF 85"><label>Participant answer</label><select><option>Not paid</option><option>Partially paid</option><option>Payment reported</option><option>Paid</option></select><label>Coordinator status</label><select><option>Awaiting confirmation</option><option>Confirmed paid</option><option>Reminder needed</option><option>Overdue</option><option>Exempt</option></select></div>
+</section>
+
+<section id="more" class="page"><h2>More</h2><div class="item"><b>Roles & Permissions</b><div class="muted">Administrators: Sylvain BASTIEN, Graeme HILDER · Hospitality Coordinator: Jonathan LABORDO · Trip Coordinator: Robin AGWALIN.</div></div>
+<div class="item"><b>Prototype notice</b><div class="muted">This V3 is a functional front-end prototype. Secure multi-user permissions, private document storage and shared data require the next Supabase deployment step.</div></div></section>
+</main>
+
+<nav>
+<button data-nav="home" class="active" onclick="page('home',this)"><strong>⌂</strong>Home</button>
+<button data-nav="talks" onclick="page('talks',this)"><strong>▣</strong>Talks</button>
+<button data-nav="hospitality" onclick="page('hospitality',this)"><strong>♡</strong>Hospitality</button>
+<button data-nav="trips" onclick="page('trips',this)"><strong>✈</strong>Trips</button>
+<button data-nav="more" onclick="page('more',this)"><strong>☰</strong>More</button>
+</nav>
+
+<div id="talkModal" class="modal"><div class="sheet"><button class="close" onclick="closeTalk()">×</button><h2>Edit Public Talk</h2>
+<label>Date</label><input id="fDate" type="date"><label>Speaker</label><input id="fSpeaker">
+<label>Congregation</label><input id="fCong"><label>City</label><input id="fCity" placeholder="e.g. Manila"><label>Country</label><input id="fCountry" placeholder="e.g. Philippines">
+<label>Talk number / title</label><select id="fTalk" onchange="talkInfo()"><option value="">Select talk…</option><option value="1">1 — Blg. 1 Gaano Mo Kakilala ang Diyos?</option>
+<option value="3">3 — Blg. 3 Sumabay sa Pagsulong ng Nagkakaisang Organisasyon ni Jehova</option>
+<option value="6">6 — Blg. 6 Ikaw at ang Baha Noong Panahon ni Noe</option>
+<option value="16">16 — Patuloy na Patibayin ang Iyong Kaugnayan sa Diyos</option>
+<option value="17">17 — Gamitin ang Lahat ng Taglay Mo Para Luwalhatiin ang Diyos</option>
+<option value="23">23 — Ang Tunay na Dahilan Kung Bakit Tayo Nabubuhay</option>
+<option value="32">32 — Blg. 32 Pagharap sa mga Álalahanín sa Buhay</option>
+<option value="50">50 — Kung Paano Magdedesisyon na Aakay sa Tagumpay</option>
+<option value="66">66 — Puwede Ka Bang Maging Manggagawa sa Pag-aani?</option>
+<option value="67">67 — Blg. 67 Bulay-bulayin ang Salita ni Jehova at ang mga Gawa Niya</option>
+<option value="96">96 — Blg. 96 Ano ang Mangyayari sa Relihiyon?</option>
+<option value="136">136 — Sinasang-ayunan ba ng Diyos ang Paggamit ng mga Imahin sa Pagsamba ?</option>
+<option value="143">143 — Magtiwala sa Diyos ng Buong Kaaliwan</option>
+<option value="170">170 — Blg. 170 Sino ang Kuwalipikadong Mamahala sa Sangkatauhan</option>
+<option value="180">180 — Ang Pagkabuhay-Muli - Kung Bakit Dapat Maging Totoo sa Iyo ang Pag-asang Iyan ?</option>
+<option value="187">187 — Bakit Pinahihintulutan ng Maibiging Diyos ang Kasamaan ?</option>
+<option value="194">194 — Kung Paano Tayo Nakikinabang sa Karunungan Mula sa Diyos</option></select>
+<div id="talkHistory" class="item hidden"></div>
+<label>Song</label><select id="fSong"><option value="">Select song…</option><option value="1">1</option>
+<option value="2">2</option>
+<option value="3">3</option>
+<option value="4">4</option>
+<option value="5">5</option>
+<option value="6">6</option>
+<option value="7">7</option>
+<option value="8">8</option>
+<option value="9">9</option>
+<option value="10">10</option>
+<option value="11">11</option>
+<option value="12">12</option>
+<option value="13">13</option>
+<option value="14">14</option>
+<option value="15">15</option>
+<option value="16">16</option>
+<option value="17">17</option>
+<option value="18">18</option>
+<option value="19">19</option>
+<option value="20">20</option>
+<option value="21">21</option>
+<option value="22">22</option>
+<option value="23">23</option>
+<option value="24">24</option>
+<option value="25">25</option>
+<option value="26">26</option>
+<option value="27">27</option>
+<option value="28">28</option>
+<option value="29">29</option>
+<option value="30">30</option>
+<option value="31">31</option>
+<option value="32">32</option>
+<option value="33">33</option>
+<option value="34">34</option>
+<option value="35">35</option>
+<option value="36">36</option>
+<option value="37">37</option>
+<option value="38">38</option>
+<option value="39">39</option>
+<option value="40">40</option>
+<option value="41">41</option>
+<option value="42">42</option>
+<option value="43">43</option>
+<option value="44">44</option>
+<option value="45">45</option>
+<option value="46">46</option>
+<option value="47">47</option>
+<option value="48">48</option>
+<option value="49">49</option>
+<option value="50">50</option>
+<option value="51">51</option>
+<option value="52">52</option>
+<option value="53">53</option>
+<option value="54">54</option>
+<option value="55">55</option>
+<option value="56">56</option>
+<option value="57">57</option>
+<option value="58">58</option>
+<option value="59">59</option>
+<option value="60">60</option>
+<option value="61">61</option>
+<option value="62">62</option>
+<option value="63">63</option>
+<option value="64">64</option>
+<option value="65">65</option>
+<option value="66">66</option>
+<option value="67">67</option>
+<option value="68">68</option>
+<option value="69">69</option>
+<option value="70">70</option>
+<option value="71">71</option>
+<option value="72">72</option>
+<option value="73">73</option>
+<option value="74">74</option>
+<option value="75">75</option>
+<option value="76">76</option>
+<option value="77">77</option>
+<option value="78">78</option>
+<option value="79">79</option>
+<option value="80">80</option>
+<option value="81">81</option>
+<option value="82">82</option>
+<option value="83">83</option>
+<option value="84">84</option>
+<option value="85">85</option>
+<option value="86">86</option>
+<option value="87">87</option>
+<option value="88">88</option>
+<option value="89">89</option>
+<option value="90">90</option>
+<option value="91">91</option>
+<option value="92">92</option>
+<option value="93">93</option>
+<option value="94">94</option>
+<option value="95">95</option>
+<option value="96">96</option>
+<option value="97">97</option>
+<option value="98">98</option>
+<option value="99">99</option>
+<option value="100">100</option>
+<option value="101">101</option>
+<option value="102">102</option>
+<option value="103">103</option>
+<option value="104">104</option>
+<option value="105">105</option>
+<option value="106">106</option>
+<option value="107">107</option>
+<option value="108">108</option>
+<option value="109">109</option>
+<option value="110">110</option>
+<option value="111">111</option>
+<option value="112">112</option>
+<option value="113">113</option>
+<option value="114">114</option>
+<option value="115">115</option>
+<option value="116">116</option>
+<option value="117">117</option>
+<option value="118">118</option>
+<option value="119">119</option>
+<option value="120">120</option>
+<option value="121">121</option>
+<option value="122">122</option>
+<option value="123">123</option>
+<option value="124">124</option>
+<option value="125">125</option>
+<option value="126">126</option>
+<option value="127">127</option>
+<option value="128">128</option>
+<option value="129">129</option>
+<option value="130">130</option>
+<option value="131">131</option>
+<option value="132">132</option>
+<option value="133">133</option>
+<option value="134">134</option>
+<option value="135">135</option>
+<option value="136">136</option>
+<option value="137">137</option>
+<option value="138">138</option>
+<option value="139">139</option>
+<option value="140">140</option>
+<option value="141">141</option>
+<option value="142">142</option>
+<option value="143">143</option>
+<option value="144">144</option>
+<option value="145">145</option>
+<option value="146">146</option>
+<option value="147">147</option>
+<option value="148">148</option>
+<option value="149">149</option>
+<option value="150">150</option>
+<option value="151">151</option>
+<option value="152">152</option>
+<option value="153">153</option>
+<option value="154">154</option>
+<option value="155">155</option>
+<option value="156">156</option>
+<option value="157">157</option>
+<option value="158">158</option>
+<option value="159">159</option>
+<option value="160">160</option>
+<option value="161">161</option>
+<option value="162">162</option></select>
+<label>Delivery</label><select id="fDelivery" onchange="deliveryChange()"><option value="">Select…</option><option>Zoom</option><option>In-person</option></select>
+<div id="zoomFields" class="hidden"><label>Geneva meeting time</label><input id="fGenevaTime" type="time" value="17:00"><button class="secondary" onclick="timeCheck()" style="margin-top:10px">Check speaker local time</button><div id="timeResult" class="item muted">Enter city/country. Production V3 will use an IANA time zone lookup and calculate DST for the exact talk date.</div></div>
+<div id="personFields" class="hidden"><label>Total persons travelling with speaker (including speaker)</label><input id="fPersons" type="number" min="1" value="1"><div class="muted">This creates/updates the Hospitality request.</div></div>
+<label>Administrator comments</label><textarea id="fComments" rows="3"></textarea>
+<button class="primary" style="width:100%;margin-top:14px" onclick="saveTalk()">Save</button></div></div>
+
+<script>
+const seed=[{"date": "2026-10-03", "speaker": "Wilmar Deompoc", "song": "12", "talk": "1", "theme": "Blg. 1 Gaano Mo Kakilala ang Diyos?", "congregation": "Tipas Cong. Taguig City Phil.", "type": "Zoom", "visitors": "", "action": "READY", "hospitality": "N/A", "notes": ""}, {"date": "2026-10-10", "speaker": "Tart Sawit", "song": "45", "talk": "67", "theme": "Blg. 67 Bulay-bulayin ang Salita ni Jehova at ang mga Gawa Niya", "congregation": "", "type": "Zoom", "visitors": "", "action": "READY", "hospitality": "N/A", "notes": ""}, {"date": "2026-10-17", "speaker": "Sonny Bangit", "song": "112", "talk": "3", "theme": "Blg. 3 Sumabay sa Pagsulong ng Nagkakaisang Organisasyon ni Jehova", "congregation": "Manila Baseco Port Area Tagalog, Philippines", "type": "Zoom", "visitors": "", "action": "READY", "hospitality": "N/A", "notes": ""}, {"date": "2026-10-24", "speaker": "Lester LAGUATAN", "song": "129", "talk": "32", "theme": "Blg. 32 Pagharap sa mga Álalahanín sa Buhay", "congregation": "Madrid Entrevias Tagalog, Spain", "type": "In-person", "visitors": "2 pax", "action": "READY", "hospitality": "ASSIGNED", "notes": ""}, {"date": "2026-10-31", "speaker": "Ronnel RODRIGUEZ", "song": "14", "talk": "170", "theme": "Blg. 170 Sino ang Kuwalipikadong Mamahala sa Sangkatauhan", "congregation": "Paris Bonne Nouvelle Tagalog, France", "type": "In-person", "visitors": "4 pax", "action": "READY", "hospitality": "ASSIGNED", "notes": ""}, {"date": "2026-11-07", "speaker": "", "song": "", "talk": "", "theme": "Circuit Assembly with Branch Representative (Tagalog)", "congregation": "", "type": "", "visitors": "", "action": "EVENT / NO SPEAKER", "hospitality": "N/A", "notes": ""}, {"date": "2026-11-14", "speaker": "Cercuit Assembly with Cercuit Overseer ", "song": "", "talk": "", "theme": "Circuit Assembly with CO (English)", "congregation": "", "type": "", "visitors": "", "action": "EVENT / NO SPEAKER", "hospitality": "N/A", "notes": ""}, {"date": "2026-11-21", "speaker": "Lavino Adtani ", "song": "97", "talk": "6", "theme": "Blg. 6 Ikaw at ang Baha Noong Panahon ni Noe", "congregation": "Marconi Tagalog, Philippines ", "type": "Zoom", "visitors": "", "action": "READY", "hospitality": "N/A", "notes": ""}, {"date": "2026-11-28", "speaker": "Marlon MANALANG", "song": "56", "talk": "96", "theme": "Blg. 96 Ano ang Mangyayari sa Relihiyon?", "congregation": "London Tagalog East, UK", "type": "In-person", "visitors": "5 pax", "action": "READY", "hospitality": "ASSIGNED", "notes": ""}, {"date": "2026-12-05", "speaker": "English C.O visit", "song": "", "talk": "", "theme": "CO VISIT ENGLISH", "congregation": "", "type": "", "visitors": "", "action": "EVENT / NO SPEAKER", "hospitality": "N/A", "notes": ""}, {"date": "2026-12-12", "speaker": "Jonathan BORJA", "song": "159", "talk": "17", "theme": "Gamitin ang Lahat ng Taglay Mo Para Luwalhatiin ang Diyos", "congregation": "Milano Crescenzago Tagalog, Italy", "type": "In-person", "visitors": "5 pax", "action": "READY", "hospitality": "ASSIGNED", "notes": ""}, {"date": "2026-12-19", "speaker": "MikeLee STaANA", "song": "88", "talk": "50", "theme": "Kung Paano Magdedesisyon na Aakay sa Tagumpay", "congregation": "Novaliches Congregation, Philippines", "type": "Zoom", "visitors": "", "action": "READY", "hospitality": "N/A", "notes": ""}, {"date": "2026-12-26", "speaker": "Lester TANGLIBEN", "song": "64", "talk": "66", "theme": "Puwede Ka Bang Maging Manggagawa sa Pag-aani?", "congregation": "Nice Tagalog, France", "type": "In-person", "visitors": "2 pax", "action": "READY", "hospitality": "ASSIGNED", "notes": ""}, {"date": "2027-01-02", "speaker": "Andy TUAZON", "song": "141", "talk": "23", "theme": "Ang Tunay na Dahilan Kung Bakit Tayo Nabubuhay", "congregation": "Roma Cassia Tagalog, Italy", "type": "In-person", "visitors": "5 pax", "action": "READY", "hospitality": "ASSIGNED", "notes": ""}, {"date": "2027-01-09", "speaker": "Arnold FERNANDEZ", "song": "147", "talk": "180", "theme": "Ang Pagkabuhay-Muli - Kung Bakit Dapat Maging Totoo sa Iyo ang Pag-asang Iyan ?", "congregation": "Henderson Arrowhead Trail Tagalog, Nevada, USA", "type": "Zoom", "visitors": "", "action": "READY", "hospitality": "N/A", "notes": ""}, {"date": "2027-01-16", "speaker": "Graeme HILDER", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "INFO INCOMPLETE", "hospitality": "N/A", "notes": ""}, {"date": "2027-01-23", "speaker": "Arnold SALUD", "song": "", "talk": "", "theme": "", "congregation": "Canada", "type": "Zoom", "visitors": "", "action": "INFO INCOMPLETE", "hospitality": "N/A", "notes": ""}, {"date": "2027-01-30", "speaker": "Sylvain BASTIEN", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "INFO INCOMPLETE", "hospitality": "N/A", "notes": ""}, {"date": "2027-02-06", "speaker": "", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "SPEAKER TO FIND", "hospitality": "N/A", "notes": ""}, {"date": "2027-02-13", "speaker": "Reuben IDAO", "song": "38", "talk": "143", "theme": "Magtiwala sa Diyos ng Buong Kaaliwan", "congregation": "English-Garfield, New Jersey, USA", "type": "Zoom", "visitors": "", "action": "READY", "hospitality": "N/A", "notes": ""}, {"date": "2027-02-20", "speaker": "Julien OLIVIER", "song": "", "talk": "", "theme": "talk to choose", "congregation": "", "type": "", "visitors": "", "action": "INFO INCOMPLETE", "hospitality": "N/A", "notes": ""}, {"date": "2027-02-27", "speaker": "Nicolas GIOCOLI", "song": "142", "talk": "187", "theme": "Bakit Pinahihintulutan ng Maibiging Diyos ang Kasamaan ?", "congregation": "Limassol Tagalog, Cyprus", "type": "Zoom", "visitors": "", "action": "READY", "hospitality": "N/A", "notes": ""}, {"date": "2027-03-06", "speaker": "", "song": "", "talk": "", "theme": "KMS 2027 ENGLISH", "congregation": "", "type": "", "visitors": "", "action": "EVENT / NO SPEAKER", "hospitality": "N/A", "notes": ""}, {"date": "2027-03-13", "speaker": "Mark BISNAN", "song": "", "talk": "", "theme": "Isang Mundong Walang Takot—Posible Ba Ito?", "congregation": "Roma", "type": "In-person", "visitors": "", "action": "INFO INCOMPLETE", "hospitality": "CHECK VISITORS", "notes": ""}, {"date": "2027-03-20", "speaker": "Lito BACUTANA", "song": "", "talk": "136", "theme": "Sinasang-ayunan ba ng Diyos ang Paggamit ng mga Imahin sa Pagsamba ?", "congregation": "Roma Tagalog Portuense, Italy", "type": "In-person", "visitors": "4 pax", "action": "INFO INCOMPLETE", "hospitality": "ASSIGNED", "notes": ""}, {"date": "2027-03-22", "speaker": "Loris BACUTANA", "song": "20 / 18", "talk": "", "theme": "MEMORIAL: Pahalagahan ang Ginawa ng Diyos at ni Kristo Para sa Iyo!", "congregation": "Roma Tagalog Portuense, Italy", "type": "In-person", "visitors": "4 pax", "action": "INFO INCOMPLETE", "hospitality": "ASSIGNED", "notes": ""}, {"date": "2027-03-27", "speaker": "", "song": "", "talk": "", "theme": "CAD with BR ENGLISH", "congregation": "", "type": "", "visitors": "", "action": "EVENT / NO SPEAKER", "hospitality": "N/A", "notes": ""}, {"date": "2027-04-03", "speaker": "Harris DANDOY", "song": "", "talk": "", "theme": "KMS 2027 TAGALOG", "congregation": "", "type": "", "visitors": "", "action": "EVENT / NO SPEAKER", "hospitality": "N/A", "notes": ""}, {"date": "2027-04-10", "speaker": "", "song": "", "talk": "", "theme": "CAD with CO TAGALOG", "congregation": "", "type": "", "visitors": "", "action": "EVENT / NO SPEAKER", "hospitality": "N/A", "notes": ""}, {"date": "2027-04-17", "speaker": "Sylvain BASTIEN", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "INFO INCOMPLETE", "hospitality": "N/A", "notes": ""}, {"date": "2027-04-24", "speaker": "Maher SINNIDO", "song": "", "talk": "194", "theme": "Kung Paano Tayo Nakikinabang sa Karunungan Mula sa Diyos", "congregation": "Torino Tagalog, Italy", "type": "In-person", "visitors": "7 pax", "action": "INFO INCOMPLETE", "hospitality": "ASSIGNED", "notes": ""}, {"date": "2027-05-01", "speaker": "", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "SPEAKER TO FIND", "hospitality": "N/A", "notes": ""}, {"date": "2027-05-08", "speaker": "", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "SPEAKER TO FIND", "hospitality": "N/A", "notes": ""}, {"date": "2027-05-15", "speaker": "Harris DANDOY", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "INFO INCOMPLETE", "hospitality": "N/A", "notes": ""}, {"date": "2027-05-22", "speaker": "Giuseppe FAMA", "song": "127", "talk": "16", "theme": "Patuloy na Patibayin ang Iyong Kaugnayan sa Diyos", "congregation": "Torino Tagalog, Italy", "type": "In-person", "visitors": "3 pax", "action": "READY", "hospitality": "ASSIGNED", "notes": ""}, {"date": "2027-05-29", "speaker": "Jullien OLIVIER", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "INFO INCOMPLETE", "hospitality": "N/A", "notes": ""}, {"date": "2027-06-05", "speaker": "Graeme HILDER", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "INFO INCOMPLETE", "hospitality": "N/A", "notes": ""}, {"date": "2027-06-12", "speaker": "", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "SPEAKER TO FIND", "hospitality": "N/A", "notes": ""}, {"date": "2027-06-19", "speaker": "", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "SPEAKER TO FIND", "hospitality": "N/A", "notes": ""}, {"date": "2027-06-26", "speaker": "", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "SPEAKER TO FIND", "hospitality": "N/A", "notes": ""}, {"date": "2027-07-03", "speaker": "Sylvain BASTIEN", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "INFO INCOMPLETE", "hospitality": "N/A", "notes": ""}, {"date": "2027-07-10", "speaker": "", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "SPEAKER TO FIND", "hospitality": "N/A", "notes": ""}, {"date": "2027-07-17", "speaker": "", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "SPEAKER TO FIND", "hospitality": "N/A", "notes": ""}, {"date": "2027-07-24", "speaker": "", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "SPEAKER TO FIND", "hospitality": "N/A", "notes": ""}, {"date": "2027-07-31", "speaker": "", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "SPEAKER TO FIND", "hospitality": "N/A", "notes": ""}, {"date": "2027-08-07", "speaker": "", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "SPEAKER TO FIND", "hospitality": "N/A", "notes": ""}, {"date": "2027-08-14", "speaker": "", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "SPEAKER TO FIND", "hospitality": "N/A", "notes": ""}, {"date": "2027-08-21", "speaker": "", "song": "", "talk": "", "theme": "RC ENGLISH", "congregation": "", "type": "", "visitors": "", "action": "SPEAKER TO FIND", "hospitality": "N/A", "notes": ""}, {"date": "2027-08-28", "speaker": "", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "SPEAKER TO FIND", "hospitality": "N/A", "notes": ""}, {"date": "2027-09-04", "speaker": "Jullien OLIVIER", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "INFO INCOMPLETE", "hospitality": "N/A", "notes": ""}, {"date": "2027-09-11", "speaker": "Graeme HILDER", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "INFO INCOMPLETE", "hospitality": "N/A", "notes": ""}, {"date": "2027-09-18", "speaker": "", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "SPEAKER TO FIND", "hospitality": "N/A", "notes": ""}, {"date": "2027-09-25", "speaker": "Harris DANDOY", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "INFO INCOMPLETE", "hospitality": "N/A", "notes": ""}, {"date": "2027-10-02", "speaker": "", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "SPEAKER TO FIND", "hospitality": "N/A", "notes": ""}, {"date": "2027-10-09", "speaker": "Sylvain BASTIEN", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "INFO INCOMPLETE", "hospitality": "N/A", "notes": ""}, {"date": "2027-10-16", "speaker": "", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "SPEAKER TO FIND", "hospitality": "N/A", "notes": ""}, {"date": "2027-10-23", "speaker": "", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "SPEAKER TO FIND", "hospitality": "N/A", "notes": ""}, {"date": "2027-10-30", "speaker": "", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "SPEAKER TO FIND", "hospitality": "N/A", "notes": ""}, {"date": "2027-11-06", "speaker": "", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "SPEAKER TO FIND", "hospitality": "N/A", "notes": ""}, {"date": "2027-11-13", "speaker": "", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "SPEAKER TO FIND", "hospitality": "N/A", "notes": ""}, {"date": "2027-11-20", "speaker": "", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "SPEAKER TO FIND", "hospitality": "N/A", "notes": ""}, {"date": "2027-11-27", "speaker": "", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "SPEAKER TO FIND", "hospitality": "N/A", "notes": ""}, {"date": "2027-12-04", "speaker": "", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "SPEAKER TO FIND", "hospitality": "N/A", "notes": ""}, {"date": "2027-12-11", "speaker": "Graeme HILDER", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "INFO INCOMPLETE", "hospitality": "N/A", "notes": ""}, {"date": "2027-12-18", "speaker": "", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "SPEAKER TO FIND", "hospitality": "N/A", "notes": ""}, {"date": "2027-12-25", "speaker": "Jullien OLIVIER", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "INFO INCOMPLETE", "hospitality": "N/A", "notes": ""}, {"date": "2028-01-01", "speaker": "", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "SPEAKER TO FIND", "hospitality": "N/A", "notes": ""}, {"date": "2028-01-08", "speaker": "Sylvain BASTIEN", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "INFO INCOMPLETE", "hospitality": "N/A", "notes": ""}, {"date": "2028-01-15", "speaker": "Harris DANDOY", "song": "", "talk": "", "theme": "", "congregation": "", "type": "", "visitors": "", "action": "INFO INCOMPLETE", "hospitality": "N/A", "notes": ""}];
+let events=JSON.parse(localStorage.getItem('gtg-v3-events')||'null')||seed;
+let role=localStorage.getItem('gtg-role')||'admin', current=-1;
+const $=s=>document.querySelector(s);
+function page(id,b){document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));$('#'+id).classList.add('active');document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));let n=document.querySelector(`[data-nav="${id}"]`);if(n)n.classList.add('active');window.scrollTo(0,0)}
+function setRole(r){role=r;localStorage.setItem('gtg-role',r);applyRole();page('home')}
+function applyRole(){
+ let access={admin:['home','talks','hospitality','trips','more'],hospitality:['home','hospitality','more'],trip:['home','trips','more'],publisher:['home','hospitality','trips']}[role];
+ document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('hidden',!access.includes(b.dataset.nav)));
+ $('#adminOnly').classList.toggle('hidden',role!=='admin');$('#publisherHome').classList.toggle('hidden',role!=='publisher');
+ $('#roleTitle').textContent={admin:'Administrator workspace',hospitality:'Hospitality Coordinator workspace',trip:'Trip Coordinator workspace',publisher:'Publisher — My Requests'}[role];
+}
+function fmt(d){return new Date(d+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}
+function renderTalks(){
+ $('#spkNeed').textContent=events.filter(e=>e.action==='SPEAKER TO FIND').length;
+ let q=($('#searchTalk')?.value||'').toLowerCase();
+ $('#talkList').innerHTML=events.map((e,i)=>[e,i]).filter(([e])=>JSON.stringify(e).toLowerCase().includes(q)).map(([e,i])=>`<button class="item" style="width:100%;text-align:left;border:0" onclick="editTalk(${i})"><div class="row"><b>${fmt(e.date)}</b><span class="badge ${e.action==='SPEAKER TO FIND'?'red':e.action==='INFO INCOMPLETE'?'orange':'green'}">${e.action||'Ready'}</span></div><div><b>${e.speaker||'No speaker assigned'}</b></div><div class="muted">${e.theme||'Talk details missing'}${e.type?' · '+e.type:''}</div></button>`).join('');
+}
+function editTalk(i){if(role!=='admin')return;current=i;let e=events[i];$('#fDate').value=e.date||'';$('#fSpeaker').value=e.speaker||'';$('#fCong').value=e.congregation||'';$('#fTalk').value=e.talk||'';$('#fSong').value=e.song||'';$('#fDelivery').value=e.type||'';$('#fPersons').value=parseInt(e.visitors)||1;$('#fComments').value=e.notes||'';deliveryChange();talkInfo();$('#talkModal').classList.add('show')}
+function closeTalk(){$('#talkModal').classList.remove('show')}
+function talkInfo(){let n=$('#fTalk').value;if(!n){$('#talkHistory').classList.add('hidden');return};let past=events.filter(e=>String(e.talk)===String(n)&&e.date<($('#fDate').value||'9999')).sort((a,b)=>b.date.localeCompare(a.date));$('#talkHistory').classList.remove('hidden');$('#talkHistory').innerHTML=`<b>Talk history</b><div class="muted">Given ${past.length} time(s) before this date${past[0]?' · Last: '+fmt(past[0].date):' · No previous record'}</div>`}
+function deliveryChange(){let z=$('#fDelivery').value==='Zoom',p=$('#fDelivery').value==='In-person';$('#zoomFields').classList.toggle('hidden',!z);$('#personFields').classList.toggle('hidden',!p)}
+function timeCheck(){let city=$('#fCity').value||'Speaker city',country=$('#fCountry').value||'country';$('#timeResult').innerHTML=`<b>${city}, ${country}</b><br>Exact local-time calculation will be connected to the location/time-zone service in the secure V3. The calculation will use the talk date, Geneva meeting time and DST rules for both locations.`}
+function saveTalk(){let e=events[current];e.date=$('#fDate').value;e.speaker=$('#fSpeaker').value;e.congregation=$('#fCong').value;e.talk=$('#fTalk').value;e.song=$('#fSong').value;e.type=$('#fDelivery').value;e.visitors=e.type==='In-person'?$('#fPersons').value+' pax':'';e.notes=$('#fComments').value;if(e.action!=='EVENT / NO SPEAKER')e.action=!e.speaker?'SPEAKER TO FIND':(!e.talk||!e.song||!e.type)?'INFO INCOMPLETE':'READY';localStorage.setItem('gtg-v3-events',JSON.stringify(events));closeTalk();renderTalks()}
+const hs=[['Accommodation','Essential','open'],['Breakfast','Important','covered'],['Dinner','Essential','covered'],['Train station pickup','Essential','covered'],['City visit','Nice to have','open'],['Field service','Nice to have','open']];
+function renderHosp(){$('#hServices').innerHTML=hs.map((x,i)=>`<div class="item ${x[1]==='Essential'?'priority':x[1]==='Important'?'warnline':'nice'}"><div class="row"><div><b>${x[0]}</b><div class="muted">${x[1]}</div></div><span class="badge ${x[2]==='covered'?'green':x[1]==='Essential'?'red':'blue'}">${x[2]==='covered'?'Covered':'Volunteer needed'}</span></div>${role==='publisher'?`<label><input style="width:auto" type="checkbox"> I can help with this service</label>`:''}</div>`).join('')}
+document.addEventListener('DOMContentLoaded',()=>{applyRole();renderTalks();renderHosp();$('#searchTalk').oninput=renderTalks});
+</script></body></html>
