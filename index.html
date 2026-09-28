@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#183b63">
+<title>Geneva TG Coordination</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:#f4f7fb;
+  color:#182333;
+  padding-bottom:90px
+}
+header{
+  background:linear-gradient(135deg,#183b63,#315f8f);
+  color:white;
+  padding:25px 18px 28px;
+  border-radius:0 0 28px 28px
+}
+header small{
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  opacity:.8
+}
+header h1{margin:7px 0 4px;font-size:25px}
+header p{margin:0;opacity:.85}
+
+main{padding:18px;max-width:900px;margin:auto}
+
+.title{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin:10px 2px 13px
+}
+.title h2{margin:0;font-size:19px}
+.title span{font-size:12px;color:#687586}
+
+.cards{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:11px
+}
+.card{
+  background:white;
+  padding:15px;
+  border-radius:18px;
+  box-shadow:0 4px 18px #183b6312
+}
+.card b{font-size:29px}
+.card div{font-size:13px;color:#586777;margin-top:3px}
+
+.red{border-left:5px solid #d94b4b}
+.orange{border-left:5px solid #e5a327}
+.blue{border-left:5px solid #4a80bd}
+.green{border-left:5px solid #42a46b}
+
+.task{
+  background:white;
+  border-radius:17px;
+  padding:14px;
+  margin:9px 0;
+  display:flex;
+  gap:12px
+}
+.dot{
+  width:11px;height:11px;border-radius:50%;
+  background:#d94b4b;
+  margin-top:5px;
+  flex:none
+}
+.task b{font-size:14px}
+.task small{
+  display:block;
+  color:#687586;
+  margin-top:5px
+}
+.tag{
+  display:inline-block;
+  background:#eef3f8;
+  color:#315f8f;
+  padding:5px 8px;
+  border-radius:20px;
+  font-size:11px;
+  margin-top:8px
+}
+
+.event{
+  background:white;
+  border-radius:18px;
+  padding:15px;
+  margin:10px 0
+}
+.eventtop{
+  display:flex;
+  justify-content:space-between;
+  gap:10px
+}
+.status{
+  font-size:11px;
+  background:#fff4d8;
+  color:#8b6200;
+  border-radius:20px;
+  padding:5px 8px
+}
+.event p{font-size:13px;color:#637080}
+
+nav{
+  position:fixed;
+  bottom:0;left:0;right:0;
+  background:white;
+  border-top:1px solid #dde4ec;
+  display:flex;
+  justify-content:space-around;
+  padding:8px 3px calc(8px + env(safe-area-inset-bottom))
+}
+nav button{
+  border:0;
+  background:none;
+  color:#687586;
+  font-size:10px;
+  padding:5px
+}
+nav strong{display:block;font-size:20px}
+.active{color:#183b63;font-weight:bold}
+
+@media(min-width:700px){
+ .cards{grid-template-columns:repeat(4,1fr)}
+}
+</style>
+</head>
+
+<body>
+
+<header>
+<small>Geneva Tagalog Group</small>
+<h1>Speaker & Hospitality</h1>
+<p>Public Talk Coordination</p>
+</header>
+
+<main>
+
+<div class="title">
+<h2>What needs your attention?</h2>
+<span>Dashboard</span>
+</div>
+
+<div class="cards">
+<div class="card red">
+<b>26</b>
+<div>Speakers needed</div>
+</div>
+
+<div class="card orange">
+<b>21</b>
+<div>Talk details missing</div>
+</div>
+
+<div class="card blue">
+<b>3</b>
+<div>Hospitality to organize</div>
+</div>
+
+<div class="card green">
+<b>8</b>
+<div>Ready</div>
+</div>
+</div>
+
+<div class="title" style="margin-top:27px">
+<h2>Priority tasks</h2>
+<span>View all</span>
+</div>
+
+<div class="task">
+<span class="dot"></span>
+<div>
+<b>Find a speaker — 6 February 2027</b>
+<small>No speaker has been assigned yet.</small>
+<span class="tag">Speaker Coordinator</span>
+</div>
+</div>
+
+<div class="task">
+<span class="dot" style="background:#e5a327"></span>
+<div>
+<b>Complete talk details</b>
+<small>Talk number, title or song is still missing.</small>
+<span class="tag">Speaker Coordinator</span>
+</div>
+</div>
+
+<div class="task">
+<span class="dot" style="background:#4a80bd"></span>
+<div>
+<b>Organize hospitality</b>
+<small>Accommodation, meals or transport need assignment.</small>
+<span class="tag">Hospitality Coordinator</span>
+</div>
+</div>
+
+<div class="title" style="margin-top:27px">
+<h2>Upcoming events</h2>
+<span>Calendar</span>
+</div>
+
+<div class="event">
+<div class="eventtop">
+<b>Saturday · Public Talk</b>
+<span class="status">Info missing</span>
+</div>
+<p>Speaker details and hospitality arrangements can be managed from the event.</p>
+</div>
+
+<div class="event">
+<div class="eventtop">
+<b>Special Event</b>
+<span class="status" style="background:#eaf7ef;color:#267247">No task</span>
+</div>
+<p>Assemblies, conventions and CO visits are excluded from speaker-needed alerts.</p>
+</div>
+
+</main>
+
+<nav>
+<button class="active"><strong>⌂</strong>Home</button>
+<button><strong>✓</strong>Tasks</button>
+<button><strong>▣</strong>Talks</button>
+<button><strong>⌂</strong>Hospitality</button>
+<button><strong>☰</strong>More</button>
+</nav>
+
+</body>
+</html>
