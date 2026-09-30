@@ -1,0 +1,1044 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#173b63">
+<title>Geneva TG Coordination · V3.9 Volunteer Portal</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+// V3.9.5 — grouped Hospitality Action Center with bulk suggested assignment.
+// Recommendation is advisory only: coordinator remains in control and assignments remain editable.
+function v392HumanNeed(t){
+  if(!t) return '';
+  if(/^meal_breakfast_/.test(t)) return 'Breakfast';
+  if(/^meal_lunch_/.test(t)) return 'Lunch';
+  if(/^meal_dinner_/.test(t)) return 'Dinner';
+  if(/^picnic_/.test(t)) return 'Picnic';
+  return t.replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase()).replace('Dropoff','Drop-off');
+}
+function v392InteractionScore(o){
+  // Prefer the person with fewer recent assignments/interactions; never auto-finalize.
+  return Number(o?.same_category_count||0)*3 + Number(o?.total_assignment_count||0);
+}
+function v392RankOffers(offers){
+  return [...(offers||[])].sort((a,b)=>v392InteractionScore(a)-v392InteractionScore(b));
+}
+function v392RecommendationText(offers){
+  const r=v392RankOffers(offers);
+  if(!r.length) return '';
+  if(r.length===1) return 'Suggested: '+(r[0].display_name||r[0].name||'volunteer')+' · others can remain as backup.';
+  return 'Suggested: '+(r[0].display_name||r[0].name||'volunteer')+' · '+(r.length-1)+' other offer'+(r.length>2?'s':'')+' kept available as backup.';
+}
+document.addEventListener('DOMContentLoaded',()=>{try{renderTripsPrototype()}catch(e){}});
+</script>
+<style>
+:root{--navy:#183f68;--navy2:#102f50;--bg:#f3f7fb;--card:#fff;--text:#17212d;--muted:#6b7888;--line:#dbe4ed;--red:#b53b43;--redbg:#fdebec;--orange:#9b6111;--orangebg:#fff2d8;--green:#28714c;--greenbg:#e5f5eb;--blue:#285e91;--bluebg:#e8f1fa;--purple:#7052a0;--purplebg:#f0eafa;--shadow:0 12px 30px rgba(21,55,88,.10)}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}button,input,select,textarea{font:inherit}.hidden{display:none!important}
+.auth{min-height:100dvh;display:grid;place-items:center;padding:24px;background:linear-gradient(#eef4fa,#f8fafc)}.authbox{width:min(460px,100%);background:#fff;border-radius:30px;padding:28px;box-shadow:var(--shadow)}.eyebrow{font-size:14px;letter-spacing:.04em}.auth h1{margin:4px 0 18px;font-size:30px}.muted{color:var(--muted)}label{display:block;font-size:13px;color:var(--muted);margin:14px 0 6px}.field{width:100%;padding:14px 15px;border:1px solid #cad7e3;border-radius:14px;background:#fff}.primary{border:0;background:var(--navy);color:#fff;padding:14px 18px;border-radius:14px;font-weight:700}.wide{width:100%;margin-top:16px}.statusline{min-height:24px;margin-top:14px;color:var(--muted);font-size:14px}
+header{position:sticky;top:0;z-index:5;background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:calc(14px + env(safe-area-inset-top)) 18px 18px}.headrow{max-width:1120px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:12px}.brand b{display:block;font-size:20px}.brand span{font-size:12px;opacity:.8}.userchip{font-size:12px;background:rgba(255,255,255,.14);padding:8px 10px;border-radius:999px;max-width:48%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+main{max-width:1120px;margin:auto;padding:18px 16px 92px}.hero{display:flex;justify-content:space-between;gap:12px;align-items:end;margin-bottom:14px}.hero h1{font-size:26px;margin:0}.hero p{margin:5px 0 0}.refresh{border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px 12px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.card{background:#fff;border:1px solid #e3eaf1;border-radius:20px;padding:17px;box-shadow:0 5px 18px rgba(22,53,83,.05)}.metric .n{font-size:32px;font-weight:800;margin-top:8px}.metric .t{font-size:13px;color:var(--muted)}.metric.red{border-top:5px solid #d6656b}.metric.orange{border-top:5px solid #d99b38}.metric.green{border-top:5px solid #58a979}.metric.purple{border-top:5px solid #9274bd}
+h2{font-size:19px;margin:22px 2px 10px}.toolbar{display:flex;gap:9px;flex-wrap:wrap;margin:10px 0}.toolbar input,.toolbar select{padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;min-width:0}.toolbar input{flex:1 1 220px}.talklist{display:grid;gap:10px}.talk{background:#fff;border:1px solid var(--line);border-radius:17px;padding:14px;display:grid;grid-template-columns:110px 1fr auto;gap:12px;align-items:center}.talk[data-talk-id]{cursor:pointer;-webkit-tap-highlight-color:rgba(28,76,116,.08);touch-action:manipulation}.talk[data-talk-id]:active{transform:scale(.995)}.datebox{font-weight:800}.datebox small{display:block;font-weight:500;color:var(--muted);margin-top:3px}.talktitle{font-weight:700}.talkmeta{font-size:13px;color:var(--muted);margin-top:5px}.pill{display:inline-block;font-size:12px;font-weight:700;padding:7px 9px;border-radius:999px;white-space:nowrap}.speaker_needed{color:var(--red);background:var(--redbg)}.details_missing{color:var(--orange);background:var(--orangebg)}.confirmed{color:var(--green);background:var(--greenbg)}.special_event{color:var(--purple);background:var(--purplebg)}.completed{color:var(--blue);background:var(--bluebg)}
+nav{position:fixed;z-index:6;bottom:0;left:0;right:0;padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid var(--line);display:flex;justify-content:center;gap:4px}nav button{border:0;background:transparent;color:#667586;padding:9px 14px;border-radius:12px;font-size:12px;font-weight:700}nav button.active{background:#e8f0f8;color:var(--navy)}.page{display:none}.page.active{display:block}.empty{text-align:center;padding:32px;color:var(--muted)}
+.modal{position:fixed;z-index:20;inset:0;background:rgba(10,25,40,.48);display:none;align-items:flex-end;justify-content:center}.modal.open{display:flex}.sheet{background:#fff;width:min(700px,100%);max-height:90dvh;overflow:auto;border-radius:24px 24px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom))}.sheethead{display:flex;justify-content:space-between;align-items:center}.close{border:0;background:#eef2f6;width:38px;height:38px;border-radius:50%;font-size:22px}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.actions{display:flex;gap:10px;margin-top:18px}.actions button{flex:1}.secondary{border:1px solid var(--line);background:#fff;padding:13px;border-radius:13px}.speakerfields{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:10px}.speakerfields .wide{grid-column:1/-1}.speakerinfo{grid-column:1/-1;background:#f7fafc;border:1px solid var(--line);border-radius:14px;padding:13px 14px;font-size:13px;line-height:1.5}.speakerinfo b{color:var(--navy)}.cataloginfo{grid-column:1/-1;background:#f7fafc;border:1px solid var(--line);border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.45}.cataloginfo b{color:var(--navy)}.historygood{color:var(--green);font-weight:700}.historywarn{color:var(--orange);font-weight:700}.historyalert{color:var(--red);font-weight:700}.quickstats{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.quickstat{background:#fff;border:1px solid var(--line);border-radius:999px;padding:5px 8px;font-size:11px;font-weight:700;color:#526273}.timeok{color:var(--green);font-weight:700}.timewarn{color:var(--orange);font-weight:700}.notice{background:#eef5fb;border:1px solid #d4e4f2;padding:13px;border-radius:14px;font-size:13px;color:#46647f}.fieldhint{font-size:11px;color:var(--muted);margin:5px 2px 0}.info-row{margin-top:3px}.info-label{color:var(--muted)}.error{color:#a62e2e}.rolepage{padding:28px 0}.rolepage .card{max-width:650px}
+@media(max-width:720px){.speakerfields{grid-template-columns:1fr}.speakerfields .wide{grid-column:auto}.grid{grid-template-columns:1fr 1fr}.talk{grid-template-columns:86px 1fr}.talk>.pill{grid-column:2;justify-self:start}.formgrid{grid-template-columns:1fr}.hero{align-items:start}.userchip{max-width:52%}}
+.hospcard{cursor:pointer}.hospmeta{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.hospsection{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}.hospactions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.mini{padding:9px 11px;border-radius:11px;border:1px solid var(--line);background:#fff;font-weight:700}.weatherbox{background:#eef5fb;border:1px solid #d4e4f2;border-radius:14px;padding:12px;margin-top:10px}.missing{color:var(--orange);font-weight:700}.ok{color:var(--green);font-weight:700}.wa{background:#1f7a4d;color:white;border:0}.hospgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.fold{border:1px solid var(--line);border-radius:16px;margin-top:12px;overflow:hidden}.fold summary{padding:14px 15px;font-weight:800;cursor:pointer;background:#f8fbfe}.foldbody{padding:0 15px 15px}.duefuture{color:var(--blue);font-weight:700}.dueover{color:var(--red);font-weight:700}.needrow{border:1px solid var(--line);border-radius:14px;padding:11px;margin-top:8px}.needhead{display:flex;justify-content:space-between;gap:8px;align-items:center}@media(max-width:720px){.hospgrid{grid-template-columns:1fr}}
+
+/* V3.8 compact mobile-first density */
+.field{padding:8px 10px!important;border-radius:10px!important;min-height:38px!important}.formgrid{gap:8px!important}label{font-size:11px!important;margin:7px 0 4px!important}.sheet{padding:14px!important}.sheethead{margin-bottom:8px!important}.fold{margin-top:8px!important;border-radius:12px!important}.fold summary{padding:10px 12px!important}.foldbody{padding:0 12px 11px!important}.hospgrid{gap:7px!important}.needrow{padding:8px 9px!important;margin-top:6px!important;border-radius:11px!important}.needhead select{min-height:34px!important;padding:5px 7px!important;font-size:12px!important}.fieldhint{font-size:11px!important}.notice{padding:9px 10px!important}.hospactions{margin-top:7px!important}.mini{padding:7px 9px!important;font-size:12px!important}.mealday{margin-top:8px;border:1px solid var(--line);border-radius:11px;overflow:hidden}.mealdate{padding:7px 9px;background:#f8fbfe;font-size:12px;font-weight:800}.mealrow{display:grid;grid-template-columns:62px 1fr;gap:8px;align-items:center;padding:6px 8px;border-top:1px solid var(--line)}.mealrow:first-of-type{border-top:0}.mealname{font-size:12px;font-weight:700}.mealrow select{width:100%;min-height:32px!important;padding:4px 6px!important;font-size:12px!important}.mealhint{font-size:10px;color:var(--muted);margin-top:2px}@media(max-width:720px){.sheet{padding:10px!important}.sheet h2{font-size:17px!important}.hospgrid{grid-template-columns:1fr 1fr!important}.mealrow{grid-template-columns:58px 1fr}}
+.volcard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:11px;margin-bottom:8px}.volhead{display:flex;justify-content:space-between;gap:8px;align-items:start}.volactions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.voloffer{font-size:11px;color:var(--muted);margin-top:5px}.assignbox{display:grid;grid-template-columns:1fr auto;gap:6px;margin-top:7px}.assignbox select{min-width:0}.offerbtn{border:0;background:var(--navy);color:#fff;border-radius:9px;padding:7px 9px;font-weight:700;font-size:12px}.withdrawbtn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:7px 9px;font-size:12px}@media(max-width:720px){.volcard{padding:9px}.assignbox{grid-template-columns:1fr}}
+.picnicbox{margin-top:10px;border:1px dashed #a8b8c8;border-radius:11px;padding:9px;background:#fbfdff}.picnicgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.fairtag{display:inline-block;font-size:10px;color:var(--muted);margin-left:4px}.fairline{font-size:10px;color:var(--muted);margin-top:3px}@media(max-width:720px){.picnicgrid{grid-template-columns:1fr 1fr}}
+
+.guestportal{min-height:100dvh;background:var(--bg)}.guestportal header{position:sticky}.guestwrap{max-width:620px;margin:auto;padding:18px 14px 48px}.guestintro{margin-bottom:12px}.privacybox{background:#eef5fb;border:1px solid #d4e4f2;border-radius:14px;padding:12px;font-size:12px;line-height:1.45;margin:12px 0}.guestname{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.guestneed{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;margin:8px 0}.guestneedhead{display:flex;justify-content:space-between;gap:8px}.guestmsg{min-height:22px;margin:10px 0;font-size:13px}.guestonly{display:none}@media(max-width:520px){.guestname{grid-template-columns:1fr}}
+
+/* V3.9.5 — Hospitality Action Center */
+.action-center{margin:14px 0 18px}
+.action-center-head{display:flex;justify-content:space-between;align-items:end;gap:10px;margin-bottom:10px}
+.action-center-title{font-size:20px;font-weight:800;color:#172033}
+.action-center-sub{font-size:13px;color:#6b7788}
+.action-card{background:#fff;border:1px solid #dbe4ed;border-radius:18px;padding:14px;margin:10px 0;box-shadow:0 3px 12px rgba(19,49,78,.04)}
+.action-card.priority{border-left:5px solid #d99a2b}
+.action-card.complete{border-left:5px solid #2c8b68}
+.action-card h4{margin:0 0 4px;font-size:16px}
+.action-meta{font-size:13px;color:#6b7788;margin-bottom:9px}
+.action-summary{font-size:14px;line-height:1.4;margin:6px 0}
+.quick-offer{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid #edf1f5}
+.quick-offer:first-of-type{border-top:0}
+.quick-assign{border:0;border-radius:10px;padding:9px 13px;background:#184f7f;color:white;font-weight:700}
+.backup-note{font-size:12px;color:#6b7788}
+.status-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.status-chip{font-size:12px;border:1px solid #dbe4ed;border-radius:999px;padding:5px 8px;background:#f8fafc}
+
+.action-toolbar{display:flex;gap:8px;margin:8px 0 12px}.action-toolbar button{flex:1}
+.action-metrics{margin:8px 0}.visit-bulk{width:100%;margin-top:8px}
+.quick-assign:disabled{opacity:.45}
+@media(max-width:720px){.action-center{margin-top:10px}.action-center-title{font-size:18px}.action-card{padding:12px}.action-toolbar{position:sticky;top:86px;z-index:3;background:var(--bg);padding:6px 0}}
+.assigned-line{padding:7px 0;border-top:1px solid var(--line)}.assigned-line:first-child{border-top:0}.alternate-box{margin-top:6px;padding:8px 10px;border-radius:12px;background:#f6f8fb;font-size:13px}.mini-replace{display:block;width:100%;margin-top:6px;padding:8px 10px;font-size:13px}
+.wa-assign{display:block;width:100%;margin-top:7px;padding:9px 10px;border:1px solid var(--line);border-radius:11px;background:white;color:#1769aa;font-weight:700;font-size:13px}
+
+.completion-banner{margin:7px 0 9px;padding:8px 10px;border-radius:11px;font-size:13px;font-weight:800}
+.completion-banner.done{background:#e7f6ed;color:#246b45}.completion-banner.pending{background:#fff4dd;color:#8a5b0a}
+.wa-withdraw{display:block;width:100%;margin-top:6px;padding:9px 10px;border:1px solid var(--line);border-radius:11px;background:white;color:#6b7280;font-weight:700;font-size:13px}
+
+.trip-card{background:white;border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0}.trip-title{font-size:18px;font-weight:800}.trip-chips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}.trip-progress{padding:10px 12px;background:#f6f8fb;border-radius:12px}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.formgrid label{font-size:13px;color:var(--muted)}.formgrid input,.formgrid select{width:100%;margin-top:5px}.trip-modal{position:fixed;inset:0;background:#0006;z-index:30;display:flex;align-items:flex-end;justify-content:center}.trip-modal.hidden{display:none}.modalbox{background:white;width:min(760px,100%);max-height:90vh;overflow:auto;border-radius:22px 22px 0 0;padding:18px}.modalhead{display:flex;justify-content:space-between;gap:10px}.iconbtn{border:0;background:#f2f4f7;border-radius:50%;width:38px;height:38px;font-size:24px}@media(max-width:700px){.formgrid{grid-template-columns:1fr}}
+</style>
+<style>
+.trip-create-actions{display:grid;grid-template-columns:1fr 1.35fr;gap:8px;margin-top:12px}.trip-suggestions{position:absolute;left:0;right:0;top:100%;z-index:60;background:#fff;border:1px solid #cad7e3;border-radius:12px;box-shadow:0 12px 28px rgba(20,45,70,.16);max-height:240px;overflow:auto}.trip-suggestion{padding:10px 12px;border-bottom:1px solid #edf1f5;cursor:pointer;font-size:14px}.trip-suggestion:last-child{border-bottom:0}.trip-suggestion:active{background:#eef5fb}#tripRouteInfo{min-height:18px;margin-top:6px;line-height:1.35}
+</style>
+<style>
+.trip-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0}
+.trip-summary-box{background:#f5f8fb;border:1px solid #e2e9f0;border-radius:12px;padding:10px}
+.trip-summary-box .k{font-size:12px;color:#6b7a8c}.trip-summary-box .v{font-size:22px;font-weight:700;margin-top:2px}
+.trip-people{margin-top:12px;border-top:1px solid #e6ebf0;padding-top:10px}
+.trip-person{padding:9px 0;border-bottom:1px solid #eef2f5;font-size:14px}
+.trip-person:last-child{border-bottom:0}.trip-person b{display:block;margin-bottom:3px}
+.trip-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.trip-actions button{flex:1;min-width:120px}
+@media(min-width:700px){.trip-summary-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+</style>
+<style>
+.transport-panel{margin-top:14px;padding:12px;border:1px solid #dfe7ef;border-radius:14px;background:#fbfdff}
+.transport-panel h4{margin:0 0 8px;font-size:16px}
+.transport-options{display:grid;grid-template-columns:1fr;gap:8px}
+.transport-option{border:1px solid #e1e7ed;border-radius:12px;padding:10px;background:white}
+.transport-option .top{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.transport-option .name{font-weight:700}.transport-option .calc{font-size:13px;color:#657487;margin-top:4px}
+.transport-cost-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.transport-cost-row label{font-size:12px;margin:0}.transport-cost-row input{margin-top:4px}
+.transport-reco{margin-top:9px;padding:9px 10px;border-radius:10px;background:#eef6ff;font-size:13px}
+</style>
+<style>
+.trip-collapse-btn{border:0;background:transparent;padding:7px 2px;font:inherit;color:#58708a;display:flex;align-items:center;gap:7px;cursor:pointer;width:100%;justify-content:flex-start}
+.trip-collapse-btn .chev{display:inline-block;transition:transform .18s ease;font-size:19px}
+.trip-card.v3141-collapsed .trip-collapse-btn .chev{transform:rotate(-90deg)}
+.trip-card.v3141-collapsed .v3141-collapsible{display:none!important}
+.trip-card.v3141-collapsed{padding-bottom:12px!important}
+@media(max-width:700px){
+ .trip-card{padding:14px!important}
+ .trip-card h3{margin-bottom:3px!important}
+ .trip-card .stat-grid{gap:7px!important}
+ .trip-card .stat-card{padding:9px!important}
+ .transport-panel{padding:10px!important}
+ .transport-option{padding:9px!important}
+}
+</style>
+<style>
+.trip-quick-actions{display:flex;gap:8px;margin:8px 0 14px}
+.trip-quick-actions button{flex:1;min-height:42px}
+.trip-quickline{display:none;margin-top:7px;font-size:13px;color:#657487}
+.trip-card.v3141-collapsed .trip-quickline{display:block}
+@media(max-width:700px){
+ .trip-card.v3141-collapsed .trip-summary-grid{display:none!important}
+ .trip-card.v3141-collapsed .trip-chips{margin-top:7px!important}
+ .trip-card.v3141-collapsed .trip-collapse-btn{margin-top:2px;padding:4px 0}
+}
+</style>
+<style>
+.travel-source-badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 7px;border-radius:999px;background:#eef3f7;color:#53677b;margin-left:5px}
+.travel-grid{display:grid;grid-template-columns:1fr;gap:8px;margin-top:9px}
+.travel-option{border:1px solid #e1e7ed;border-radius:12px;padding:11px;background:#fff}
+.travel-option .travel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.travel-option .travel-name{font-weight:750}
+.travel-option .travel-price{font-weight:800;font-size:17px;white-space:nowrap}
+.travel-meta{font-size:12px;color:#657487;margin-top:5px;line-height:1.45}
+.travel-fields{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}
+.travel-fields label{font-size:11px;color:#657487}
+.travel-fields input,.travel-fields select{margin-top:3px;width:100%}
+.travel-note{margin-top:8px;padding:9px 10px;border-radius:10px;background:#fff8e8;font-size:12px;line-height:1.45}
+@media(max-width:700px){.travel-fields{grid-template-columns:1fr 1fr}.travel-option{padding:9px}}
+</style>
+</head>
+<body>
+<section id="auth" class="auth">
+ <div class="authbox"><div class="eyebrow">GENEVA TAGALOG GROUP</div><h1>Secure sign in</h1><p class="muted">Enter your authorized email address. A secure sign-in link will be sent by email.</p><label>Email</label><input id="email" class="field" type="email" autocomplete="email" placeholder="name@example.com"><button id="sendLink" class="primary wide">Send sign-in link</button><div id="authMsg" class="statusline"></div></div>
+</section>
+<section id="guestPortal" class="guestportal hidden">
+<header><div class="headrow"><div class="brand"><b>Geneva TG Volunteer</b><span>Hospitality volunteer portal</span></div><div class="userchip">Guest access</div></div></header>
+<div class="guestwrap"><div class="guestintro"><h1 style="margin-bottom:5px">Volunteer</h1><p class="muted">See current hospitality needs and offer your help. No account is required.</p></div>
+<div class="privacybox"><b>Privacy</b><br>We only ask for your first and last name to coordinate hospitality volunteering for Geneva Tagalog Group. No email address, phone number or account is required. Your name and volunteer offer are available only to authorized coordinators and administrators and are used only for this coordination purpose. You may ask a coordinator to correct or delete your information.</div>
+<div class="card"><b>Your name</b><div class="guestname"><input id="gFirst" class="field" autocomplete="given-name" placeholder="First name"><input id="gLast" class="field" autocomplete="family-name" placeholder="Last name"></div><div class="fieldhint">Enter your name before offering help. It is stored on this device only for convenience.</div></div>
+<h2>Current needs</h2><div id="guestNeeds"></div><div id="guestMsg" class="guestmsg muted"></div></div></section>
+<div id="app" class="hidden">
+<header><div class="headrow"><div class="brand"><b>Geneva TG Coordination</b><span>Shared coordination workspace · V3.15 Travel Cost Engine</span></div><div id="userChip" class="userchip"></div></div></header>
+<main>
+<section id="dashboard" class="page active"><div class="hero"><div><h1>Dashboard</h1><p class="muted">What needs your attention?</p></div><button class="refresh" onclick="loadAll()">↻ Refresh</button></div><div class="grid"><div class="card metric red"><div class="t">Speaker Needed</div><div id="mNeed" class="n">—</div></div><div class="card metric orange"><div class="t">Talk Details Missing</div><div id="mMissing" class="n">—</div></div><div class="card metric green"><div class="t">Confirmed</div><div id="mConfirmed" class="n">—</div></div><div class="card metric purple"><div class="t">Special Events</div><div id="mSpecial" class="n">—</div></div></div><h2>Upcoming public talks</h2><div id="upcoming" class="talklist"></div></section>
+<section id="talks" class="page"><div class="hero"><div><h1>Public Talks</h1><p class="muted">Planning, speaker details and talk history</p></div><button class="refresh" onclick="loadAll()">↻ Refresh</button></div><div class="toolbar"><input id="search" placeholder="Search speaker, event or talk…"><select id="statusFilter"><option value="">All statuses</option><option value="speaker_needed">Speaker Needed</option><option value="details_missing">Details Missing</option><option value="confirmed">Confirmed</option><option value="special_event">Special Event</option></select></div><div id="talkList" class="talklist"></div></section>
+<section id="hospitality" class="page"><div class="hero"><div><h1>Hospitality</h1><p class="muted">Speaker visits, arrangements and communications</p></div><button class="refresh" onclick="loadHospitality()">↻ Refresh</button></div><div id="hospitalitySummary" class="grid"></div><div id="hospitalityActionCenter" class="action-center"></div>
+<div id="hospitalityList" class="talklist"></div></section>
+<section id="volunteer" class="page"><div class="hero"><div><h1>Volunteer</h1><p class="muted">Offer help for open hospitality needs</p></div><button class="refresh" onclick="loadVolunteerBoard()">↻ Refresh</button></div><div id="volunteerList" class="talklist"></div></section>
+<section id="trips" class="page rolepage">
+<div class="pagehead"><div><h1>Trips</h1><p class="muted">Assemblies, conventions, Bethel visits and group travel.</p></div><button class="secondary" onclick="renderTripsDashboardV313()">↻ Refresh</button></div>
+<div class="grid">
+ <div class="card metric blue"><div class="t">Upcoming trips</div><div class="n" id="tripMetricUpcoming">—</div></div>
+ <div class="card metric orange"><div class="t">Participant responses</div><div class="n" id="tripMetricResponses">—</div></div>
+</div>
+<div class="card"><h3>Trip Coordinator</h3><p class="muted">Plan participants, transport, hotel, surveys, costs and WhatsApp communications. Hospitality and Public Talk management remain separate.</p><button class="primary" onclick="openTripDraft()">+ Create trip</button></div>
+<div class="trip-quick-actions"><button class="secondary" onclick="setAllTripsV3142(true)">Collapse all</button><button class="secondary" onclick="setAllTripsV3142(false)">Expand all</button></div>
+<div id="tripPrototypeCards"></div>
+<div id="tripDraft" class="trip-modal hidden"><div class="modalbox"><div class="modalhead"><div><h2>New trip</h2><div class="muted">Create the coordination record first; participant survey follows.</div></div><button class="iconbtn" onclick="$('tripDraft').classList.add('hidden')">×</button></div>
+<div class="formgrid">
+<label>Trip name<input id="tripName" placeholder="Circuit Assembly — Cameri"></label>
+<label>Type<select id="tripType"><option>Circuit Assembly</option><option>Convention</option><option>Bethel Visit</option><option>Group Trip</option><option>Other</option></select></label>
+<label>Start date<input id="tripStart" type="date" onchange="syncTripEndV3122()"></label><label>End date<input id="tripEnd" type="date"></label>
+<label style="position:relative">Destination<input id="tripDestination" placeholder="Type at least 3 letters…" autocomplete="off" oninput="searchTripDestinationV3122()"><div id="tripDestinationSuggestions" class="trip-suggestions hidden"></div><div id="tripRouteInfo" class="fieldhint">From central Geneva · type at least 3 letters.</div></label>
+<label>Status<select id="tripStatus"><option>Planning</option><option>Survey open</option><option>Booking</option><option>Confirmed</option><option>Completed</option></select></label>
+<label>Transport<select id="tripTransport"><option>To decide</option><option>Car</option><option>Van</option><option>Coach</option><option>Train</option><option>Flight</option></select></label>
+<label>Hotel<select id="tripHotel"><option>To decide</option><option>Not required</option><option>Required</option><option>Booked</option></select></label>
+<label>Estimated total cost<input id="tripCost" type="number" min="0" step="0.01" placeholder="CHF"></label>
+<label>Estimated participants<input id="tripPeople" type="number" min="1" placeholder="0"></label>
+</div><div class="notice">V3.14: save the trip, then share its participant survey. Responses drive transport, hotel and cost planning.</div>
+<div class="trip-create-actions"><button class="secondary" onclick="previewTripDraft()">Preview trip</button><button class="primary" id="saveTripBtn" onclick="saveTripV3121()">Save new trip</button></div><button class="secondary" style="width:100%;margin-top:8px" id="surveyBtn" onclick="openTripSurveyManagerV3121()" disabled>Participant survey</button></div></div>
+</section>
+<section id="account" class="page rolepage"><div class="card"><h1>Account</h1><p id="accountInfo"></p><button id="signOut" class="secondary">Sign out</button></div></section>
+</main><nav id="nav"></nav></div>
+<div id="modal" class="modal"><div class="sheet"><div class="sheethead"><div><div class="eyebrow">PUBLIC TALK · V3.8</div><h2 id="editHeading" style="margin:4px 0 0">Edit</h2></div><button class="close" onclick="closeModal()">×</button></div><input id="editId" type="hidden"><div class="formgrid"><div><label>Date</label><input id="eDate" class="field" type="date" disabled></div><div><label>Status</label><select id="eStatus" class="field"><option value="planning">Planning</option><option value="speaker_needed">Speaker Needed</option><option value="details_missing">Details Missing</option><option value="confirmed">Confirmed</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option><option value="special_event">Special Event</option></select><div id="statusHint" class="fieldhint"></div></div><div class="wide"><label>Speaker name</label><input id="eSpeaker" class="field" list="speakerNames" autocomplete="off" placeholder="Type or select a speaker"><datalist id="speakerNames"></datalist><input id="eSpeakerId" type="hidden"></div><div class="speakerfields"><div class="wide"><label>Congregation</label><input id="eCongregation" class="field" list="congregationNames" autocomplete="off" placeholder="Congregation"><datalist id="congregationNames"></datalist></div><div><label>City</label><input id="eCity" class="field" list="cityNames" autocomplete="off" placeholder="City"><datalist id="cityNames"></datalist></div><div><label>State / Region</label><input id="eRegion" class="field" list="regionNames" autocomplete="off" placeholder="Optional"><datalist id="regionNames"></datalist></div><div><label>Country</label><input id="eCountry" class="field" list="countryNames" autocomplete="off" placeholder="Country"><datalist id="countryNames"></datalist></div><div><label>Time zone</label><input id="eTimezone" class="field" list="timezoneNames" autocomplete="off" placeholder="Auto-detected when possible"><datalist id="timezoneNames"></datalist></div></div><div id="speakerInfo" class="speakerinfo hidden"></div><div><label>Talk</label><select id="eTalk" class="field"></select></div><div id="talkInfo" class="cataloginfo hidden"></div><div><label>Song</label><select id="eSong" class="field"></select></div><div><label>Delivery</label><select id="eDelivery" class="field"><option value="">Not set</option><option value="zoom">Zoom</option><option value="in_person">In person</option></select></div><div id="personsWrap"><label>Total visitors</label><input id="ePersons" class="field" type="number" min="1" placeholder="Speaker + accompanying visitors"></div><div id="prayerModeWrap" class="hidden"><label>Final prayer</label><select id="ePrayerMode" class="field"><option value="speaker">Speaker</option><option value="local_brother">Assign locally</option></select></div><div id="prayerBrotherWrap" class="hidden"><label>Assign final prayer to</label><select id="ePrayerBrother" class="field"></select></div><div id="eventWrap" class="hidden"><label>Special event title</label><input id="eEvent" class="field" placeholder="Assembly, convention, CO visit…"></div></div><label>Admin comments</label><textarea id="eComments" class="field" rows="3"></textarea><div id="saveMsg" class="statusline"></div><div class="actions"><button class="secondary" onclick="closeModal()">Cancel</button><button id="saveTalk" class="primary">Save changes</button></div></div></div>
+<div id="hospModal" class="modal"><div class="sheet"><div class="sheethead"><div><div class="eyebrow">HOSPITALITY · V3.8.4.3</div><h2 id="hospHeading" style="margin:4px 0 0">Visit</h2></div><button class="close" onclick="closeHospitality()">×</button></div><input id="hVisitId" type="hidden"><div id="hSpeakerContact" class="notice"></div>
+<details class="fold" open><summary>Visit & transport</summary><div class="foldbody"><div class="hospgrid"><div><label>Total visitors</label><input id="hVisitors" class="field" type="number" min="1" oninput="updateHospitalityReadiness()"><div class="fieldhint">Initially synced from Public Talks. Editable for last-minute changes; saving keeps Public Talks in sync.</div></div><div><label>Arrival by</label><select id="hArrivalMode" class="field" onchange="syncTransportFromArrival();updateTransportUI();updateHospitalityReadiness()"><option value="">Not known</option><option value="car">Car</option><option value="train">Train</option><option value="plane">Plane</option><option value="other">Other</option></select></div><div><label>Arrival date</label><input id="hArrivalDate" class="field" type="date" onchange="autoNights();renderMeals();renderPicnic();updateHospitalityReadiness()"></div><div><label>Arrival time</label><input id="hArrivalTime" class="field" type="time" onchange="renderMeals();renderPicnic();updateHospitalityReadiness()"></div><div><label id="hArrivalPlaceLabel">Arrival place</label><input id="hArrivalPlace" class="field" oninput="updateHospitalityReadiness()"></div><div><label>Departure by</label><select id="hDepartureMode" class="field" onchange="updateTransportUI()"><option value="">Not known</option><option value="car">Car</option><option value="train">Train</option><option value="plane">Plane</option><option value="other">Other</option></select></div><div><label>Departure date</label><input id="hDepartureDate" class="field" type="date" onchange="autoNights();renderMeals();renderPicnic();updateHospitalityReadiness()"></div><div><label>Departure time</label><input id="hDepartureTime" class="field" type="time" onchange="renderMeals();renderPicnic();updateHospitalityReadiness()"></div><div><label id="hDeparturePlaceLabel">Departure place</label><input id="hDeparturePlace" class="field"></div></div></div></details>
+<details class="fold" open><summary>Accommodation & meals</summary><div class="foldbody"><div class="hospgrid"><div><label>Accommodation needed</label><select id="hAccommodation" class="field"><option value="">Not known</option><option value="yes">Yes</option><option value="no">No</option></select></div><div><label>Nights</label><input id="hNights" class="field" type="number" min="0"><div class="fieldhint">Calculated from arrival/departure dates when possible; editable.</div></div></div><label>Dietary requirements</label><textarea id="hDiet" class="field" rows="2"></textarea><label>Hospitality notes</label><textarea id="hNotes" class="field" rows="2"></textarea><div style="margin-top:9px"><b style="font-size:12px">Meals by day</b><div class="fieldhint">Based on the meeting day until travel dates are known. Each meal is Open by default; set Not required manually when appropriate.</div><div id="hMeals"></div></div><div id="hPicnic"></div></div></details>
+<details class="fold" open><summary>Needs & assignments</summary><div class="foldbody"><div id="hReadiness" class="notice" style="margin-bottom:10px"></div><div id="hNeeds"></div><div class="hospactions" style="margin-top:10px"><button class="mini wa" onclick="shareOpenNeeds()">Share open needs</button><button class="mini" onclick="copyOpenNeeds()">Copy open needs</button></div><div class="fieldhint">Safety default: every unreviewed need is Open. Change it manually to Not required when appropriate. Group messages include only needs currently marked Open; offers received, assigned, completed and not-required items are excluded. Changes are saved with Save hospitality.</div></div></details>
+<details class="fold"><summary>Geneva weather & clothing</summary><div class="foldbody"><div id="hWeather" class="weatherbox"></div></div></details>
+<details class="fold" open><summary>Communication Center</summary><div class="foldbody"><div id="hCommunication"></div></div></details>
+<div id="hSaveMsg" class="statusline"></div><div class="actions"><button class="secondary" onclick="closeHospitality()">Close</button><button class="primary" onclick="saveHospitality()">Save hospitality</button></div></div></div>
+<script>
+const SUPABASE_URL='https://evdffmuseekhplippthk.supabase.co';
+const SUPABASE_KEY='sb_publishable_Tv92ZKNYPNElO5O8t5M3CA_imYX4duu';
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const guestToken=new URLSearchParams(location.search).get('volunteer')||'';
+const guestOfferKey=localStorage.getItem('genevaTGGuestOfferKey')||crypto.randomUUID();
+localStorage.setItem('genevaTGGuestOfferKey',guestOfferKey);
+function guestMode(){return !!guestToken}
+function guestName(){return {first_name:($('gFirst')?.value||'').trim(),last_name:($('gLast')?.value||'').trim()}}
+function saveGuestName(){const n=guestName();localStorage.setItem('genevaTGGuestName',JSON.stringify(n));return n}
+function loadGuestName(){try{const n=JSON.parse(localStorage.getItem('genevaTGGuestName')||'{}');$('gFirst').value=n.first_name||'';$('gLast').value=n.last_name||''}catch(e){}}
+function guestNeedLabel(n){return String(n.need_title||n.need_type||'Volunteer need').replaceAll('_',' ')}
+async function startGuest(){ $('auth').classList.add('hidden');$('app').classList.add('hidden');$('guestPortal').classList.remove('hidden');loadGuestName();await loadGuestNeeds()}
+async function loadGuestNeeds(){const box=$('guestNeeds');box.innerHTML='<div class="card muted">Loading…</div>';const {data,error}=await sb.rpc('volunteer_portal_needs',{p_token:guestToken,p_offer_key:guestOfferKey});if(error){box.innerHTML='<div class="card error">This volunteer link is invalid or no longer active.</div>';return}const rows=data||[];box.innerHTML=rows.map(n=>`<div class="guestneed"><div class="guestneedhead"><div><b>${esc(guestNeedLabel(n))}</b><div class="fieldhint">${esc(n.event_date_label||'Upcoming hospitality')}</div></div><span class="pill ${n.my_offer?'confirmed':'details_missing'}">${n.my_offer?'Offered':'Open'}</span></div><div class="volactions">${n.my_offer?`<button class="withdrawbtn" onclick="guestWithdraw('${esc(n.need_id)}')">Withdraw my offer</button>`:`<button class="offerbtn" onclick="guestOffer('${esc(n.need_id)}')">I can help</button>`}</div></div>`).join('')||'<div class="card muted">There are no open hospitality needs at the moment.</div>'}
+async function guestOffer(needId){const n=saveGuestName();if(!n.first_name||!n.last_name){$('guestMsg').textContent='Please enter your first and last name first.';return}const {error}=await sb.rpc('volunteer_portal_offer',{p_token:guestToken,p_need_id:needId,p_first_name:n.first_name,p_last_name:n.last_name,p_offer_key:guestOfferKey});$('guestMsg').textContent=error?('Could not save your offer: '+error.message):'Thank you. Your offer has been sent to the Hospitality Coordinator.';if(!error)await loadGuestNeeds()}
+async function guestWithdraw(needId){const {error}=await sb.rpc('volunteer_portal_withdraw',{p_token:guestToken,p_need_id:needId,p_offer_key:guestOfferKey});$('guestMsg').textContent=error?('Could not withdraw your offer: '+error.message):'Your offer has been withdrawn.';if(!error)await loadGuestNeeds()}
+
+let profile=null,talks=[],speakers=[],localBrothers=[],talkCatalog=[],songCatalog=[],talkHistory=[],hospitalityVisits=[],hospitalityTemplates=[],hospitalityComms=[];
+let volunteerPortalUrl='';
+async function loadVolunteerPortalUrl(){if(!canHosp())return;const {data,error}=await sb.from('volunteer_access_links').select('token').eq('active',true).or('expires_at.is.null,expires_at.gt.'+new Date().toISOString()).order('created_at',{ascending:false}).limit(1).maybeSingle();if(!error&&data?.token)volunteerPortalUrl=location.origin+location.pathname.replace(/[^/]+$/,'volunteer.html')}
+let statusManualOverride=false;
+let volunteerOffers=[],volunteerAssignments=[],publisherProfiles=[],guestVolunteerOffers=[];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function niceStatus(s){return ({speaker_needed:'Speaker Needed',details_missing:'Details Missing',confirmed:'Confirmed',special_event:'Special Event',completed:'Completed',planning:'Planning',cancelled:'Cancelled'})[s]||s||'Planning'}
+function fmtDate(d){const x=new Date(d+'T12:00:00');return {day:x.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}),year:x.getFullYear(),weekday:x.toLocaleDateString('en-GB',{weekday:'short'})}}
+function canTalks(){return profile?.role==='admin'} 
+function renderTripsPrototype(){
+ const box=$('tripPrototypeCards');if(!box)return;
+ box.innerHTML=`<div class="trip-card"><div class="trip-title">Circuit Assembly — Cameri</div><div class="muted">7–8 Nov 2026 · Cameri, Italy</div><div class="trip-chips"><span class="status-chip">Planning</span><span class="status-chip">Transport: to decide</span><span class="status-chip">Hotel: to decide</span></div><div class="trip-progress"><b>Next:</b> open participant survey and estimate vans vs coach.</div></div>
+ <div class="trip-card"><div class="trip-title">Circuit Assembly — Cameri</div><div class="muted">10 Apr 2027 · Cameri, Italy</div><div class="trip-chips"><span class="status-chip">Planning</span><span class="status-chip">Participants: not surveyed</span></div><div class="trip-progress"><b>Next:</b> collect attendance interest.</div></div>`;
+}
+function openTripDraft(){$('tripDraft').classList.remove('hidden');setTimeout(()=>syncTripEndV3122(),0)}
+function previewTripDraft(){
+ const name=$('tripName').value.trim();if(!name)return alert('Please enter a trip name.');
+ const people=Number($('tripPeople').value||0),cost=Number($('tripCost').value||0);
+ const per=people&&cost?(cost/people).toFixed(2):'—';
+ alert(`${name}\n${$('tripDestination').value||'Destination to decide'}\n${$('tripStart').value||'Date to decide'} → ${$('tripEnd').value||$('tripStart').value||'Date to decide'}\nTransport: ${$('tripTransport').value}\nHotel: ${$('tripHotel').value}\nEstimated cost per person: ${per==='—'?'To calculate':'CHF '+per}\n\nPrototype only — nothing has been saved yet.`);
+}
+function canHosp(){return ['admin','hospitality_coordinator'].includes(profile?.role)} function canTrips(){return ['admin','trip_coordinator'].includes(profile?.role)} function canVolunteer(){return ['admin','hospitality_coordinator','publisher'].includes(profile?.role)}
+async function sendMagic(){const email=$('email').value.trim().toLowerCase();if(!email)return;$('authMsg').textContent='Sending secure sign-in link…';const redirect=location.origin+location.pathname;const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:redirect}});$('authMsg').textContent=error?error.message:'Sign-in link sent. Check your email, then open the secure link to return here.'}
+async function start(){if(guestMode()){await startGuest();return}const {data:{session}}=await sb.auth.getSession();if(!session){$('auth').classList.remove('hidden');$('app').classList.add('hidden');return}const {data,error}=await sb.from('profiles').select('id,email,full_name,role,active').eq('id',session.user.id).maybeSingle();if(error||!data||!data.active){$('authMsg').textContent='Your account is signed in but access is not active.';await sb.auth.signOut();return}profile=data;$('auth').classList.add('hidden');$('app').classList.remove('hidden');$('userChip').textContent=(profile.full_name||profile.email)+' · '+profile.role.replaceAll('_',' ');$('accountInfo').innerHTML='<b>'+esc(profile.full_name||'')+'</b><br>'+esc(profile.email)+'<br><span class="muted">Role: '+esc(profile.role.replaceAll('_',' '))+'</span>';buildNav();if(canVolunteer()){const pr=await sb.from('profiles').select('id,full_name,email,role,active').eq('active',true);publisherProfiles=pr.error?[]:(pr.data||[])}if(canHosp())await loadVolunteerPortalUrl();await loadAll()}
+function buildNav(){let items=[['dashboard','Dashboard']];if(canTalks())items.push(['talks','Public Talks']);if(canHosp())items.push(['hospitality','Hospitality']);if(canVolunteer())items.push(['volunteer','Volunteer']);if(canTrips())items.push(['trips','Trips']);items.push(['account','Account']);$('nav').innerHTML=items.map((x,i)=>`<button class="${i===0?'active':''}" data-page="${x[0]}">${x[1]}</button>`).join('');$('nav').querySelectorAll('button').forEach(b=>b.onclick=()=>showPage(b.dataset.page,b))}
+function showPage(id,btn){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));$(id).classList.add('active');document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));if(id==='hospitality'&&canHosp())loadHospitality();if(id==='volunteer'&&canVolunteer())loadVolunteerBoard()}
+async function loadAll(){if(canTalks()){const [tr,sr,br,tc,sc,th]=await Promise.all([sb.from('public_talks').select('id,talk_date,meeting_time,speaker_id,talk_number,song_number,delivery_method,total_persons,final_prayer_mode,final_prayer_brother_id,admin_status,event_title,admin_comments,speakers(full_name,congregation,city,state_region,country,timezone)').order('talk_date'),sb.from('speakers').select('id,full_name,congregation,city,state_region,country,timezone,email,phone,zoom_available,in_person_available').eq('active',true).order('full_name'),sb.from('local_brothers').select('id,full_name,appointment,active').eq('active',true).order('full_name'),sb.from('talk_catalog').select('talk_number,title,active').eq('active',true).order('talk_number'),sb.from('song_catalog').select('song_number,title,active').eq('active',true).order('song_number'),sb.from('talk_history_entries').select('talk_date,talk_number,speaker_name,congregation,delivery_method').order('talk_date')]);if(tr.error){$('upcoming').innerHTML='<div class="card error">'+esc(tr.error.message)+'</div>';return}talks=tr.data||[];speakers=sr.data||[];localBrothers=br.data||[];talkCatalog=tc.data||[];songCatalog=sc.data||[];talkHistory=th.error?[]:(th.data||[]);renderMetrics();renderTalks();fillSpeakers();fillLocalBrothers();fillCatalogs()}else{$('mNeed').textContent='—';$('mMissing').textContent='—';$('mConfirmed').textContent='—';$('mSpecial').textContent='—';$('upcoming').innerHTML='<div class="card muted">Your role does not include Public Talk management.</div>'}}
+function renderMetrics(){const c=s=>talks.filter(t=>t.admin_status===s).length;$('mNeed').textContent=c('speaker_needed');$('mMissing').textContent=c('details_missing');$('mConfirmed').textContent=c('confirmed');$('mSpecial').textContent=c('special_event');const today=new Date().toISOString().slice(0,10);$('upcoming').innerHTML=talks.filter(t=>t.talk_date>=today).slice(0,6).map(talkHTML).join('')||'<div class="empty">No upcoming talks.</div>'}
+function catalogTalk(n){return talkCatalog.find(x=>Number(x.talk_number)===Number(n))} function catalogSong(n){return songCatalog.find(x=>Number(x.song_number)===Number(n))}
+function talkHTML(t){const d=fmtDate(t.talk_date),sp=t.speakers?.full_name||'',title=t.event_title||(sp||'Speaker not assigned'),tc=catalogTalk(t.talk_number),sc=catalogSong(t.song_number),talkLabel=t.talk_number?('Talk '+t.talk_number+(tc?.title?' — '+tc.title:'')):null,songLabel=t.song_number?('Song '+t.song_number+(sc?.title?' — '+sc.title:'')):null,meta=[talkLabel,songLabel,t.delivery_method==='in_person'?'In person':t.delivery_method==='zoom'?'Zoom':null,t.speakers?.congregation].filter(Boolean).join(' · ');return `<div class="talk" data-talk-id="${esc(t.id)}" tabindex="0" role="button" aria-label="Open public talk for ${esc(d.day+' '+d.year)}"><div class="datebox">${d.day}<small>${d.weekday} ${d.year}</small></div><div><div class="talktitle">${esc(title)}</div><div class="talkmeta">${esc(meta||'Details to be completed')}</div></div><span class="pill ${esc(t.admin_status)}">${esc(niceStatus(t.admin_status))}</span></div>`}
+function renderTalks(){if(!canTalks())return;const q=$('search').value.toLowerCase(),st=$('statusFilter').value;const arr=talks.filter(t=>(!st||t.admin_status===st)&&(!q||JSON.stringify(t).toLowerCase().includes(q)));$('talkList').innerHTML=arr.map(talkHTML).join('')||'<div class="empty">No matching dates.</div>'}
+function uniqueVals(key){return [...new Set(speakers.map(s=>s[key]).filter(Boolean).map(v=>String(v).trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b))}
+function fillDataList(id,vals){const el=$(id);if(el)el.innerHTML=vals.map(v=>`<option value="${esc(v)}"></option>`).join('')}
+function fillSpeakers(){fillDataList('speakerNames',uniqueVals('full_name'));fillDataList('congregationNames',uniqueVals('congregation'));fillDataList('cityNames',uniqueVals('city'));fillDataList('regionNames',uniqueVals('state_region'));fillDataList('countryNames',uniqueVals('country'));fillDataList('timezoneNames',uniqueVals('timezone'))}
+function speakerByName(name){const n=String(name||'').trim().toLocaleLowerCase();return speakers.find(s=>String(s.full_name||'').trim().toLocaleLowerCase()===n)}
+function speakerAtTalk(){const id=$('eSpeakerId').value;return speakers.find(s=>s.id===id)||speakerByName($('eSpeaker').value)}
+function speakerDraft(){return {full_name:$('eSpeaker').value.trim(),congregation:$('eCongregation').value.trim()||null,city:$('eCity').value.trim()||null,state_region:$('eRegion').value.trim()||null,country:$('eCountry').value.trim()||null,timezone:$('eTimezone').value.trim()||null}}
+function loadSpeakerFields(s){$('eSpeakerId').value=s?.id||'';$('eSpeaker').value=s?.full_name||'';$('eCongregation').value=s?.congregation||'';$('eCity').value=s?.city||'';$('eRegion').value=s?.state_region||'';$('eCountry').value=s?.country||'';$('eTimezone').value=s?.timezone||'';updateSpeakerInfo()}
+function onSpeakerNameChange(){const match=speakerByName($('eSpeaker').value);if(match)loadSpeakerFields(match);else{$('eSpeakerId').value='';updateSpeakerInfo()}updateStatusUI()}
+function fillCatalogs(){if($('eTalk'))$('eTalk').innerHTML='<option value="">Not set</option>'+talkCatalog.map(x=>`<option value="${x.talk_number}">${esc(x.talk_number+' — '+(x.title||'Title not loaded'))}</option>`).join('');if($('eSong'))$('eSong').innerHTML='<option value="">Not set</option>'+songCatalog.map(x=>`<option value="${x.song_number}">${esc(x.song_number+' — '+(x.title||'Song '+x.song_number))}</option>`).join('')}
+function updateTalkInfo(){const box=$('talkInfo'),n=$('eTalk').value;if(!n){box.classList.add('hidden');box.innerHTML='';return}const item=catalogTalk(n),currentId=$('editId').value,currentDate=$('eDate').value,valid=t=>t.id!==currentId&&t.admin_status!=='cancelled'&&t.admin_status!=='special_event',same=t=>Number(t.talk_number)===Number(n)&&valid(t),future=talks.filter(t=>same(t)&&t.talk_date>currentDate).sort((a,b)=>a.talk_date.localeCompare(b.talk_date)),completed=talks.filter(t=>same(t)&&t.admin_status==='completed'&&t.talk_date<currentDate).map(t=>({talk_date:t.talk_date,speaker_name:t.speakers?.full_name||'',source:'live'})),legacy=talkHistory.filter(h=>Number(h.talk_number)===Number(n)&&h.talk_date<currentDate).map(h=>({talk_date:h.talk_date,speaker_name:h.speaker_name||'',source:'legacy'})),seen=new Set(),given=[...legacy,...completed].filter(x=>{const k=x.talk_date+'|'+n;if(seen.has(k))return false;seen.add(k);return true}).sort((a,b)=>b.talk_date.localeCompare(a.talk_date)),lastGiven=given[0]||null,next=future[0];let signal='historygood',msg='No recent repetition detected.';if(lastGiven){const gap=Math.round((new Date(currentDate+'T12:00:00')-new Date(lastGiven.talk_date+'T12:00:00'))/86400000),months=Math.max(0,Math.round(gap/30.4375)),ago=months<1?gap+' days ago':months===1?'1 month ago':months+' months ago';if(gap<90){signal='historyalert';msg='Very recently given — '+ago+' · '+gap+' days.'}else if(gap<180){signal='historywarn';msg='Recently given — '+ago+' · '+gap+' days.'}else msg='Last given '+ago+' · '+gap+' days.'}else msg=talkHistory.length?'No previous delivery found in the imported history.':'History database not loaded yet.';const fd=d=>new Date(d+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});box.innerHTML='<b>Talk '+esc(n)+(item?.title?' — '+esc(item.title):'')+'</b><div class="info-row"><span class="info-label">Previously given:</span> '+given.length+(given.length===1?' time':' times')+'</div><div class="info-row"><span class="info-label">Last given:</span> '+(lastGiven?esc(fd(lastGiven.talk_date)):'Not recorded')+'</div><div class="info-row"><span class="info-label">Next scheduled:</span> '+(next?esc(fd(next.talk_date)):'—')+'</div><div class="'+signal+'" style="margin-top:7px">'+esc(msg)+'</div>';box.classList.remove('hidden')}
+// V3.7.6 — explicit IANA time-zone lookup tables used by inferSpeakerZone().
+// Keys are normalized by normPlace(); the stored zone remains DST-aware via Intl.DateTimeFormat.
+const CITY_ZONE={
+ 'rome':'Europe/Rome','roma':'Europe/Rome','milan':'Europe/Rome','milano':'Europe/Rome','naples':'Europe/Rome','napoli':'Europe/Rome','turin':'Europe/Rome','torino':'Europe/Rome',
+ 'geneva':'Europe/Zurich','genève':'Europe/Zurich','zurich':'Europe/Zurich','zürich':'Europe/Zurich','lausanne':'Europe/Zurich','bern':'Europe/Zurich','basel':'Europe/Zurich',
+ 'paris':'Europe/Paris','lyon':'Europe/Paris','marseille':'Europe/Paris','nice':'Europe/Paris',
+ 'london':'Europe/London','manchester':'Europe/London',
+ 'berlin':'Europe/Berlin','hamburg':'Europe/Berlin','munich':'Europe/Berlin','münchen':'Europe/Berlin',
+ 'madrid':'Europe/Madrid','barcelona':'Europe/Madrid','lisbon':'Europe/Lisbon',
+ 'manila':'Asia/Manila','cebu':'Asia/Manila','davao':'Asia/Manila',
+ 'new york':'America/New_York','los angeles':'America/Los_Angeles','chicago':'America/Chicago','honolulu':'Pacific/Honolulu',
+ 'henderson':'America/Los_Angeles','las vegas':'America/Los_Angeles',
+ 'toronto':'America/Toronto','vancouver':'America/Vancouver',
+ 'sydney':'Australia/Sydney','melbourne':'Australia/Melbourne','perth':'Australia/Perth',
+ 'tokyo':'Asia/Tokyo','singapore':'Asia/Singapore','hong kong':'Asia/Hong_Kong','bangkok':'Asia/Bangkok'
+};
+const REGION_ZONE={
+ 'lazio':'Europe/Rome','lombardy':'Europe/Rome','lombardia':'Europe/Rome','piedmont':'Europe/Rome','piemonte':'Europe/Rome',
+ 'nevada':'America/Los_Angeles','california':'America/Los_Angeles','new york':'America/New_York',
+ 'ontario':'America/Toronto','british columbia':'America/Vancouver',
+ 'new south wales':'Australia/Sydney','victoria':'Australia/Melbourne','western australia':'Australia/Perth'
+};
+const COUNTRY_ZONE={
+ 'italy':'Europe/Rome','italia':'Europe/Rome','switzerland':'Europe/Zurich','suisse':'Europe/Zurich','france':'Europe/Paris',
+ 'germany':'Europe/Berlin','deutschland':'Europe/Berlin','spain':'Europe/Madrid','portugal':'Europe/Lisbon','united kingdom':'Europe/London','uk':'Europe/London',
+ 'philippines':'Asia/Manila','singapore':'Asia/Singapore','japan':'Asia/Tokyo','thailand':'Asia/Bangkok','south korea':'Asia/Seoul','korea':'Asia/Seoul',
+ 'belgium':'Europe/Brussels','netherlands':'Europe/Amsterdam','austria':'Europe/Vienna','czech republic':'Europe/Prague','czechia':'Europe/Prague',
+ 'croatia':'Europe/Zagreb','greece':'Europe/Athens','poland':'Europe/Warsaw','denmark':'Europe/Copenhagen','norway':'Europe/Oslo','sweden':'Europe/Stockholm','finland':'Europe/Helsinki'
+};
+function normPlace(v){return String(v||'').trim().toLowerCase().replace(/\./g,'').replace(/\s+/g,' ')}
+function inferSpeakerZone(s){if(s.timezone)return {zone:s.timezone,level:'exact',label:'Exact time zone'};const city=normPlace(s.city),region=normPlace(s.state_region),country=normPlace(s.country),legacy=normPlace([s.congregation,s.city,s.state_region,s.country].filter(Boolean).join(', '));if(city&&CITY_ZONE[city])return {zone:CITY_ZONE[city],level:'city',label:'Time zone inferred from city'};if(region&&REGION_ZONE[region])return {zone:REGION_ZONE[region],level:'region',label:'Time zone inferred from state / region'};for(const [name,zone] of Object.entries(CITY_ZONE)){if(name.length>3&&new RegExp('(^|[,\\s])'+name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'([,\\s]|$)','i').test(legacy))return {zone,level:'city',label:'Time zone inferred from available location'}}for(const [name,zone] of Object.entries(REGION_ZONE)){if(new RegExp('(^|[,\\s])'+name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'([,\\s]|$)','i').test(legacy))return {zone,level:'region',label:'Time zone inferred from available location'}}if(country&&COUNTRY_ZONE[country])return {zone:COUNTRY_ZONE[country],level:'country',label:'Time zone inferred from country'};for(const [name,zone] of Object.entries(COUNTRY_ZONE)){if(legacy.includes(name))return {zone,level:'country',label:'Time zone inferred from available location'}}if(['canada','united states','usa','united states of america','australia','brazil','mexico','russia','indonesia'].includes(country))return {zone:null,level:'multiple',label:'Multiple time zones — city or region needed for exact local time'};return {zone:null,level:'unknown',label:'Local time unavailable from current location information'} }
+function genevaInstant(date,time){if(!date||!time)return null;try{const [h,m]=time.slice(0,5).split(':').map(Number);let guess=new Date(`${date}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00Z`);for(let i=0;i<2;i++){const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Zurich',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(guess);const v=Object.fromEntries(parts.filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));const shown=Date.UTC(+v.year,+v.month-1,+v.day,+v.hour,+v.minute);const wanted=Date.UTC(+date.slice(0,4),+date.slice(5,7)-1,+date.slice(8,10),h,m);guess=new Date(guess.getTime()+(wanted-shown))}return guess}catch(e){return null}}
+function timeAtZone(date,time,tz){if(!date||!time||!tz)return null;try{const instant=genevaInstant(date,time);if(!instant)return null;return new Intl.DateTimeFormat('en-GB',{timeZone:tz,hour:'2-digit',minute:'2-digit',hour12:false,timeZoneName:'short'}).format(instant)}catch(e){return null}}
+function updateSpeakerInfo(){const box=$('speakerInfo'),draft=speakerDraft();if(!draft.full_name){box.classList.add('hidden');box.innerHTML='';return}const talk=talks.find(t=>t.id===$('editId').value)||{},z=inferSpeakerZone(draft);if(!$('eTimezone').value&&z.zone)$('eTimezone').placeholder='Suggested: '+z.zone;else $('eTimezone').placeholder='Auto-detected when possible';const local=z.zone?timeAtZone($('eDate').value,talk.meeting_time||'18:30',z.zone):null,geneva=timeAtZone($('eDate').value,talk.meeting_time||'18:30','Europe/Zurich'),loc=[draft.city,draft.state_region,draft.country].filter(Boolean).join(', ');let html='<b>Speaker preview</b><div class="info-row"><span class="info-label">Name:</span> '+esc(draft.full_name)+'</div><div class="info-row"><span class="info-label">Congregation:</span> '+esc(draft.congregation||'Not set')+'</div><div class="info-row"><span class="info-label">Location:</span> '+esc(loc||'Not set')+'</div>';if(local)html+='<div class="info-row timeok"><span class="info-label">Local time:</span> '+esc(local)+' <span class="muted">· Geneva '+esc(geneva?.replace(/\s+(GMT|UTC).*$/,'')||talk.meeting_time?.slice(0,5)||'')+'</span></div>';else html+='<div class="info-row muted">'+esc(z.label)+'</div>';if(z.zone)html+='<div class="info-row muted" style="font-size:11px">'+esc(z.zone)+' · '+esc(z.label)+'</div>';html+='<div class="fieldhint">These fields remain editable. Saving updates this speaker in the dynamic directory; a new name creates a new speaker.</div>';box.innerHTML=html;box.classList.remove('hidden')} function fillLocalBrothers(){if(!$('ePrayerBrother'))return;const rank=a=>a.appointment==='elder'?0:1;const arr=[...localBrothers].sort((a,b)=>rank(a)-rank(b)||a.full_name.localeCompare(b.full_name));$('ePrayerBrother').innerHTML='<option value="">Select a brother</option>'+arr.map(b=>`<option value="${b.id}">${esc(b.full_name)} — ${b.appointment==='elder'?'Elder':'Ministerial Servant'}</option>`).join('')}
+function openTalk(id){
+ const t=talks.find(x=>String(x.id)===String(id));
+ if(!t)return;
+ // Open the sheet first so every status is accessible even if a preview helper fails.
+ $('modal').classList.add('open');
+ $('editId').value=t.id||'';
+ $('eDate').value=t.talk_date||'';
+ statusManualOverride=false;
+ $('eStatus').value=t.admin_status||'planning';
+ $('eDelivery').value=t.delivery_method||'';
+ $('eTalk').value=t.talk_number??'';
+ $('eSong').value=t.song_number??'';
+ $('ePersons').value=t.total_persons??'';
+ $('ePrayerMode').value=t.final_prayer_mode||'speaker';
+ $('ePrayerBrother').value=t.final_prayer_brother_id||'';
+ $('eEvent').value=t.event_title||'';
+ $('eComments').value=t.admin_comments||'';
+ $('editHeading').textContent=new Date(t.talk_date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+ $('saveMsg').textContent='';
+ const linked=speakers.find(s=>String(s.id)===String(t.speaker_id));
+ const joined=Array.isArray(t.speakers)?t.speakers[0]:t.speakers;
+ const sp=linked||joined||null;
+ // Fill speaker fields without running dependent preview code mid-initialisation.
+ $('eSpeakerId').value=sp?.id||t.speaker_id||'';
+ $('eSpeaker').value=sp?.full_name||'';
+ $('eCongregation').value=sp?.congregation||'';
+ $('eCity').value=sp?.city||'';
+ $('eRegion').value=sp?.state_region||'';
+ $('eCountry').value=sp?.country||'';
+ $('eTimezone').value=sp?.timezone||'';
+ try{updateDeliveryFields()}catch(e){console.warn('delivery preview',e)}
+ try{updateSpeakerInfo()}catch(e){console.warn('speaker preview',e)}
+ try{updateTalkInfo()}catch(e){console.warn('talk history preview',e)}
+ try{updateStatusUI()}catch(e){console.warn('status preview',e)}
+}
+function closeModal(){$('modal').classList.remove('open')}
+function updateStatusUI(forceAuto=false){const current=$('eStatus').value;if(statusManualOverride&&!forceAuto){$('eventWrap').classList.toggle('hidden',current!=='special_event');$('statusHint').textContent='Manual administrator status — this choice will be saved.';return}if(['special_event','completed','cancelled'].includes(current)&&!forceAuto){$('eventWrap').classList.toggle('hidden',current!=='special_event');$('statusHint').textContent='Manual status retained for this record.';return}let suggested='planning';if(!$('eSpeaker').value.trim())suggested='speaker_needed';else if(!$('eTalk').value||!$('eSong').value||!$('eDelivery').value||($('eDelivery').value==='in_person'&&!$('ePersons').value)||($('ePrayerMode').value==='local_brother'&&!$('ePrayerBrother').value))suggested='details_missing';else suggested='confirmed';$('eStatus').value=suggested;$('statusHint').textContent='Status automatically suggested. You can override it manually.';$('eventWrap').classList.add('hidden')}
+function updateDeliveryFields(){const d=$('eDelivery').value,person=d==='in_person',hasDelivery=!!d;$('personsWrap').classList.toggle('hidden',!person);$('prayerModeWrap').classList.toggle('hidden',!hasDelivery);$('prayerBrotherWrap').classList.toggle('hidden',!(hasDelivery&&$('ePrayerMode').value==='local_brother'));if(!person)$('ePersons').value='';if(!hasDelivery){$('ePrayerMode').value='speaker';$('ePrayerBrother').value=''}updateStatusUI()}
+async function saveTalk(){
+ const msg=$('saveMsg');
+ try{
+  msg.textContent='Saving…'; msg.className='statusline';
+  if(!statusManualOverride)updateStatusUI();
+  const id=$('editId').value,delivery=$('eDelivery').value||null,status=$('eStatus').value,persons=$('ePersons').value?Number($('ePersons').value):null;
+  if(!id)throw new Error('Public Talk ID is missing. Close and reopen this talk.');
+  if(delivery==='in_person'&&!persons&&status!=='details_missing')throw new Error('For an in-person visit, enter the total number of visitors or use Details Missing.');
+  const prayerMode=delivery?$('ePrayerMode').value:null,prayerBrother=delivery&&prayerMode==='local_brother'?($('ePrayerBrother').value||null):null;
+  if(delivery&&prayerMode==='local_brother'&&!prayerBrother)throw new Error('Select the local brother assigned to the final prayer.');
+
+  const sd=speakerDraft(); let speakerId=$('eSpeakerId').value||null;
+  if(sd.full_name){
+   const inferred=inferSpeakerZone(sd); if(!sd.timezone&&inferred.zone)sd.timezone=inferred.zone;
+   if(!speakerId){const existing=speakerByName(sd.full_name);speakerId=existing?.id||null}
+   let res;
+   if(speakerId) res=await sb.from('speakers').update(sd).eq('id',speakerId).select('id,full_name,congregation,city,state_region,country,timezone').maybeSingle();
+   else res=await sb.from('speakers').insert({...sd,active:true}).select('id,full_name,congregation,city,state_region,country,timezone').single();
+   if(res.error)throw new Error('Speaker save failed: '+res.error.message);
+   if(!res.data?.id)throw new Error('Speaker save returned no row. Your session may not have update permission.');
+   speakerId=res.data.id; $('eSpeakerId').value=speakerId;
+   const check=res.data;
+   const mismatch=['full_name','congregation','city','state_region','country'].filter(k=>String(check?.[k]||'').trim()!==String(sd[k]||'').trim());
+   if(mismatch.length)throw new Error('Speaker save verification failed for: '+mismatch.join(', '));
+   msg.textContent='Speaker saved. Saving Public Talk…';
+  }
+  const payload={speaker_id:speakerId,talk_number:$('eTalk').value?Number($('eTalk').value):null,song_number:$('eSong').value?Number($('eSong').value):null,delivery_method:delivery,total_persons:delivery==='in_person'?persons:null,final_prayer_mode:prayerMode,final_prayer_brother_id:prayerBrother,admin_status:status,event_title:status==='special_event'?($('eEvent').value.trim()||null):null,admin_comments:$('eComments').value.trim()||null,updated_by:profile.id,updated_at:new Date().toISOString()};
+  const tr=await sb.from('public_talks').update(payload).eq('id',id).select('id,speaker_id,admin_status,total_persons').maybeSingle();
+  if(tr.error)throw new Error('Public Talk save failed: '+tr.error.message);
+  if(!tr.data?.id)throw new Error('Public Talk save returned no row. Your session may not have update permission.');
+  // Force a fresh read instead of trusting the local cache.
+  const fresh=await sb.from('speakers').select('id,full_name,congregation,city,state_region,country,timezone').eq('id',speakerId).maybeSingle();
+  if(fresh.error)throw new Error('Saved, but verification read failed: '+fresh.error.message);
+  if(sd.full_name&&(!fresh.data||String(fresh.data.city||'').trim()!==String(sd.city||'').trim()||String(fresh.data.country||'').trim()!==String(sd.country||'').trim()))throw new Error('Supabase did not return the saved City/Country. Please keep this window open.');
+  msg.textContent='Saved successfully — verified in Supabase.'; msg.className='statusline success';
+  await loadAll(); await loadHospitality(); setTimeout(closeModal,1200);
+ }catch(err){
+  console.error('saveTalk',err); msg.textContent=err?.message||String(err); msg.className='statusline error';
+ }
+}
+function monthWeatherGuidance(date){const m=new Date(date+'T12:00:00').getMonth()+1;const g={1:['1–6°C','Cold; rain, frost or snow possible','Warm coat, layers, waterproof shoes and an umbrella'],2:['1–7°C','Cold; rain or occasional snow possible','Warm coat, layers and waterproof shoes'],3:['4–12°C','Cool and changeable','Layers, a medium jacket and rain protection'],4:['7–16°C','Mild but changeable; showers possible','Layers, light jacket and umbrella'],5:['11–20°C','Mild to warm; showers possible','Light layers and a rain jacket'],6:['15–24°C','Warm; thunderstorms possible','Light clothing plus a light rain layer'],7:['17–27°C','Warm to hot','Light clothing, sun protection and water'],8:['16–26°C','Warm; occasional storms','Light clothing and a light rain layer'],9:['13–21°C','Mild; cooler evenings','Layers and a light jacket'],10:['9–16°C','Cool and often damp','Jacket, layers and rain protection'],11:['4–10°C','Cold and damp','Warm coat, layers and waterproof shoes'],12:['1–6°C','Cold; rain, frost or snow possible','Warm coat, layers, waterproof shoes and an umbrella']}[m];return {temp:g[0],conditions:g[1],clothes:g[2]}}
+function missingHospitality(v){const a=[];if(!v.total_visitors)a.push('number of visitors');if(!v.arrival_mode)a.push('means of arrival');if(!v.arrival_date)a.push('arrival date');if(!v.arrival_time)a.push('arrival time');if(!v.arrival_place)a.push('arrival place');if(!v.departure_date)a.push('departure date');if(!v.departure_time)a.push('departure time');return a}
+async function loadHospitality(){if(!canHosp())return;const [vr,mt,cm,nr,or,ar,pr,gr]=await Promise.all([sb.from('hospitality_visit_details').select('*,public_talks(id,talk_date,total_persons,speaker_id,speakers(full_name,congregation,city,state_region,country,phone,email))').order('created_at'),sb.from('hospitality_message_templates').select('*').eq('active',true).order('sort_order'),sb.from('hospitality_communications').select('*').order('created_at',{ascending:false}),sb.from('hospitality_needs').select('*').order('created_at'),sb.from('hospitality_volunteer_offers').select('*'),sb.from('hospitality_volunteer_assignments').select('*'),sb.from('profiles').select('id,full_name,email,role,active').eq('active',true),sb.rpc('volunteer_manager_guest_offers')]);if(vr.error){$('hospitalityList').innerHTML='<div class="card error">Hospitality setup required: '+esc(vr.error.message)+'<br><span class="muted">Run the V3.7.1 Hospitality SQL migration in Supabase first.</span></div>';return}hospitalityVisits=vr.data||[];hospitalityTemplates=mt.data||[];hospitalityComms=cm.data||[];hospitalityNeeds=nr.error?[]:(nr.data||[]);volunteerOffers=or.error?[]:(or.data||[]);volunteerAssignments=ar.error?[]:(ar.data||[]);publisherProfiles=pr.error?[]:(pr.data||[]);guestVolunteerOffers=gr.error?[]:(gr.data||[]);renderHospitality()}
+
+function normalizeVolunteerName(name){
+ return String(name||'')
+  .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .toLowerCase().replace(/[^a-z0-9 ]/g,' ')
+  .replace(/\s+/g,' ').trim();
+}
+function volunteerNameTokens(name){
+ return normalizeVolunteerName(name).split(' ').filter(Boolean);
+}
+function sameVolunteerName(a,b){
+ const A=volunteerNameTokens(a),B=volunteerNameTokens(b);
+ if(!A.length||!B.length)return false;
+ if(normalizeVolunteerName(a)===normalizeVolunteerName(b))return true;
+ // Conservative match: same first and last name; middle names may be omitted.
+ return A.length>=2&&B.length>=2&&A[0]===B[0]&&A[A.length-1]===B[B.length-1];
+}
+function historicalAssignmentsForName(name){
+ const keys=new Set();
+ (guestVolunteerOffers||[]).forEach(g=>{
+   const gn=[g.first_name,g.last_name].filter(Boolean).join(' ')||g.volunteer_name||g.name||'';
+   if(sameVolunteerName(name,gn))keys.add(String(g.id||g.offer_id||g.guest_offer_id||''));
+ });
+ const profileIds=new Set();
+ (volunteerOffers||[]).forEach(o=>{
+   const pn=personName(o.volunteer_id)||'';
+   if(o.volunteer_id&&sameVolunteerName(name,pn))profileIds.add(String(o.volunteer_id));
+ });
+ return (volunteerAssignments||[]).filter(a=>{
+   if(a.active===false)return false;
+   if(a.volunteer_id&&profileIds.has(String(a.volunteer_id)))return true;
+   if(a.guest_offer_id&&keys.has(String(a.guest_offer_id)))return true;
+   return false;
+ }).length;
+}
+function dedupeVolunteerChoices(rows){
+ const out=[];
+ for(const r of rows){
+   const found=out.find(x=>sameVolunteerName(x.name,r.name));
+   if(!found)out.push({...r});
+   else{
+     // Keep the usable offer identity with the lowest computed score,
+     // but merge history so spelling variants do not look like new volunteers.
+     if(r.score<found.score){found.kind=r.kind;found.id=r.id}
+     found.score=Math.max(found.score,r.score,historicalAssignmentsForName(found.name),historicalAssignmentsForName(r.name));
+     if(String(r.name).length>String(found.name).length)found.name=r.name;
+   }
+ }
+ return out;
+}
+function actionOffersForNeed(n){
+ const auth=(volunteerOffers||[])
+  .filter(o=>String(o.need_id||'')===String(n.id)&&String(o.status||'offered')==='offered')
+  .filter(o=>o.volunteer_id)
+  .map(o=>{
+    const name=String(personName(o.volunteer_id)||'Volunteer');
+    const score=(volunteerAssignments||[]).filter(a=>String(a.volunteer_id||'')===String(o.volunteer_id)&&a.active!==false).length;
+    return {kind:'profile',id:o.volunteer_id,name,score};
+  });
+ const guests=(guestVolunteerOffers||[])
+  .filter(o=>String(o.need_id||'')===String(n.id)&&String(o.status||'offered')==='offered')
+  .map(o=>{
+    const gid=o.id||o.offer_id||o.guest_offer_id;
+    if(!gid)return null;
+    const name=String([o.first_name,o.last_name].filter(Boolean).join(' ')||o.volunteer_name||o.name||'Guest volunteer');
+    const score=(volunteerAssignments||[]).filter(a=>{
+      if(a.active===false||!a.guest_offer_id)return false;
+      const g=(guestVolunteerOffers||[]).find(x=>String(x.id||x.offer_id||x.guest_offer_id)===String(a.guest_offer_id));
+      const gn=g?String([g.first_name,g.last_name].filter(Boolean).join(' ')||g.volunteer_name||g.name||'').toLowerCase():'';
+      return gn&&gn===name.toLowerCase();
+    }).length;
+    return {kind:'guest',id:gid,name,score};
+  }).filter(Boolean);
+ const merged=dedupeVolunteerChoices([...auth,...guests]);
+ merged.forEach(x=>x.score=Math.max(x.score,historicalAssignmentsForName(x.name)));
+ return merged.sort((a,b)=>(a.score-b.score)||String(a.name).localeCompare(String(b.name)));
+}
+function activeAssignment(n){return volunteerAssignments.find(a=>a.need_id===n.id&&a.active!==false)}
+function assignedDisplay(a){if(!a)return '';if(a.guest_offer_id){const g=guestVolunteerOffers.find(x=>x.id===a.guest_offer_id);return g?(g.first_name+' '+g.last_name):'Guest volunteer'}return personName(a.volunteer_id)}
+function visitNeeds(v){return hospitalityNeeds.filter(n=>n.visit_id===v.id&&n.status!=='not_required'&&n.status!=='completed')}
+function actionNeedName(n){
+ const t=String(n?.need_type||'');
+ if(/^meal_breakfast_/.test(t)) return 'Breakfast';
+ if(/^meal_lunch_/.test(t)) return 'Lunch';
+ if(/^meal_dinner_/.test(t)) return 'Dinner';
+ if(/^picnic_/.test(t)) return 'Picnic';
+ if(t) return t.replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase()).replace('Dropoff','Drop-off');
+ return displayNeedTitle(n);
+}
+function alternateOffersForAssignedNeed(n){
+ const a=activeAssignment(n); if(!a)return [];
+ const assignedName=assignedDisplay(a);
+ return actionOffersForNeed(n).filter(o=>!sameVolunteerName(o.name,assignedName));
+}
+async function replaceAssignmentFromOffer(needId,kind,id){
+ if(!confirm('Replace the currently assigned volunteer with this volunteer?'))return;
+ await quickAssign(needId,kind,id);
+}
+
+function whatsappTextUrl(text){
+ return 'https://wa.me/?text='+encodeURIComponent(text);
+}
+function assignmentWhatsAppText(v,n,a){
+ const t=v?.public_talks||{}, sp=Array.isArray(t.speakers)?t.speakers[0]:t.speakers;
+ const d=t.talk_date?new Date(t.talk_date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):'the visit';
+ return `Hello ${assignedDisplay(a)},\n\nThank you for offering to help with the hospitality arrangement for ${sp?.full_name||'our visiting speaker'} on ${d}.\n\nYou have been assigned: ${actionNeedName(n)}.\n\nThank you very much for your help.\n\nGeneva Tagalog Group`;
+}
+function replacementWhatsAppText(v,n,a){
+ const t=v?.public_talks||{}, sp=Array.isArray(t.speakers)?t.speakers[0]:t.speakers;
+ const d=t.talk_date?new Date(t.talk_date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):'the visit';
+ return `Hello ${assignedDisplay(a)},\n\nThank you for your willingness to help with ${actionNeedName(n)} for ${sp?.full_name||'our visiting speaker'} on ${d}.\n\nThe arrangement has now been updated and another volunteer has been assigned to this need. We have kept your offer available in case the arrangement changes again.\n\nThank you very much for your support.\n\nGeneva Tagalog Group`;
+}
+function openAssignmentWhatsApp(visitId,needId,mode){
+ const v=(hospitalityVisits||[]).find(x=>String(x.id)===String(visitId));
+ const n=(hospitalityNeeds||[]).find(x=>String(x.id)===String(needId));
+ const a=n?activeAssignment(n):null;
+ if(!v||!n||!a)return alert('Assignment details are not available.');
+ const msg=mode==='replacement'?replacementWhatsAppText(v,n,a):assignmentWhatsAppText(v,n,a);
+ window.open(whatsappTextUrl(msg),'_blank');
+}
+
+function requiredHospitalityNeeds(v){
+ return visitNeeds(v).filter(n=>String(n.status||'').toLowerCase()!=='not_required'&&!String(n.need_type||'').startsWith('picnic_'));
+}
+function hospitalityCoverage(v){
+ const req=requiredHospitalityNeeds(v), covered=req.filter(n=>!!activeAssignment(n));
+ return {required:req.length,covered:covered.length,complete:req.length>0&&covered.length===req.length};
+}
+function withdrawalWhatsAppText(v,n,name){
+ const t=v?.public_talks||{},sp=Array.isArray(t.speakers)?t.speakers[0]:t.speakers;
+ const d=t.talk_date?new Date(t.talk_date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):'the visit';
+ return `Hello ${name},\n\nThank you for letting us know about the change concerning ${actionNeedName(n)} for ${sp?.full_name||'our visiting speaker'} on ${d}.\n\nNo problem. We will update the hospitality arrangement.\n\nThank you for your willingness to help.\n\nGeneva Tagalog Group`;
+}
+function openWithdrawalWhatsApp(visitId,needId){
+ const v=(hospitalityVisits||[]).find(x=>String(x.id)===String(visitId));
+ const n=(hospitalityNeeds||[]).find(x=>String(x.id)===String(needId));
+ const a=n?activeAssignment(n):null;if(!v||!n||!a)return;
+ window.open(whatsappTextUrl(withdrawalWhatsAppText(v,n,assignedDisplay(a))),'_blank');
+}
+function renderHospitalityActionCenter(future){
+ const box=$('hospitalityActionCenter'); if(!box)return;
+ box.innerHTML=`<div class="action-center-head"><div><div class="action-center-title">Volunteer responses</div><div class="action-center-sub">Loading volunteer responses…</div></div></div>`;
+ try{
+ const rows=(future||[]).map(v=>{
+   const needs=visitNeeds(v);
+   const offered=needs.filter(n=>!activeAssignment(n)&&actionOffersForNeed(n).length);
+   const assigned=needs.filter(n=>activeAssignment(n));
+   const open=needs.filter(n=>!activeAssignment(n)&&!actionOffersForNeed(n).length&&n.status==='open');
+   return {v,needs,offered,assigned,open};
+ }).sort((a,b)=>{
+   if(a.offered.length!==b.offered.length)return b.offered.length-a.offered.length;
+   return a.v.public_talks.talk_date.localeCompare(b.v.public_talks.talk_date);
+ });
+ const actionable=rows.filter(x=>x.offered.length);
+ const totalOffers=actionable.reduce((s,x)=>s+x.offered.length,0);
+ const totalOpen=rows.reduce((s,x)=>s+x.open.length,0);
+ const totalAssigned=rows.reduce((s,x)=>s+x.assigned.length,0);
+ const top=`<div class="action-center-head"><div><div class="action-center-title">Volunteer responses</div><div class="action-center-sub">Offers are grouped by visit. Suggested assignments favour volunteers with fewer previous assignments; all assignments remain editable.</div></div></div>
+ <div class="grid action-metrics">
+   <div class="card metric orange"><div class="t">Offers to review</div><div class="n">${totalOffers}</div></div>
+   <div class="card metric blue"><div class="t">Still open</div><div class="n">${totalOpen}</div></div>
+ </div>
+ <div class="action-toolbar">
+   <button class="quick-assign" ${totalOffers?'':'disabled'} onclick="bulkAssignAllSuggested()">Assign suggested</button>
+   <button class="secondary" onclick="loadHospitality()">↻ Refresh</button>
+ </div>`;
+ const cards=rows.map(x=>{
+   const t=x.v.public_talks,sp=Array.isArray(t.speakers)?t.speakers[0]:t.speakers;
+   const date=new Date(t.talk_date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+   const offers=x.offered.map(n=>{
+     const r=actionOffersForNeed(n),best=r[0];
+     const alternates=r.slice(1);
+     return `<div class="quick-offer"><div><b>${esc(actionNeedName(n))}</b><br><span>${esc(best.name)}</span> <span class="backup-note">Suggested · ${best.score} previous assignment${best.score===1?'':'s'}</span>${alternates.length?`<div class="backup-note"><b>Other offers:</b> ${alternates.map(x=>esc(x.name)).join(' · ')}</div>`:''}</div><button class="quick-assign" onclick="event.stopPropagation();quickAssign('${n.id}','${best.kind}','${best.id}')">Assign</button></div>`;
+   }).join('');
+   const still=x.open.map(actionNeedName);
+   return `<div class="action-card ${x.offered.length?'priority':(!still.length&&x.needs.length?'complete':'')}" onclick="openHospitality('${x.v.id}')">
+     <h4>${esc(date)} · ${esc(sp?.full_name||'Speaker')}</h4>
+     ${(()=>{const c=hospitalityCoverage(x.v);return `<div class="completion-banner ${c.complete?'done':'pending'}">${c.complete?'✓ Hospitality complete':`${c.covered}/${c.required} required needs covered`}</div>`})()}
+     <div class="action-meta">${x.offered.length?`<b>${x.offered.length} response${x.offered.length>1?'s':''} ready to assign</b>`:x.needs.length?(still.length?'No new volunteer responses':'✓ All current needs covered'):'Needs not created yet'}</div>
+     ${offers}
+     ${x.offered.length?`<button class="quick-assign visit-bulk" onclick="event.stopPropagation();bulkAssignVisit('${x.v.id}')">Assign suggested for this visit</button>`:''}
+     ${x.assigned.length?`<div class="action-summary"><b>Assigned</b>${x.assigned.map(n=>{const alts=alternateOffersForAssignedNeed(n);return `<div class="assigned-line"><span>${esc(actionNeedName(n))} → <b>${esc(assignedDisplay(activeAssignment(n)))}</b></span><button class="wa-assign" onclick="event.stopPropagation();openAssignmentWhatsApp('${x.v.id}','${n.id}','confirmation')">WhatsApp confirmation</button><button class="wa-withdraw" onclick="event.stopPropagation();openWithdrawalWhatsApp('${x.v.id}','${n.id}')">Withdrawal message</button>${alts.length?`<div class="alternate-box"><span>Other offers: ${alts.map(a=>esc(a.name)).join(' · ')}</span>${alts.map(a=>`<button class="secondary mini-replace" onclick="event.stopPropagation();replaceAssignmentFromOffer('${n.id}','${a.kind}','${a.id}')">Replace with ${esc(a.name)}</button>`).join('')}</div>`:''}</div>`;}).join('')}</div>`:''}
+     ${still.length?`<div class="action-summary"><b>Still needed:</b> ${esc(still.join(' · '))}</div>`:''}
+     <div class="status-chips"><span class="status-chip">${x.open.length} open</span><span class="status-chip">${x.offered.length} offered</span><span class="status-chip">${x.assigned.length} assigned</span></div>
+   </div>`;
+ }).join('');
+ box.innerHTML=top+(cards||'<div class="card muted">No upcoming hospitality visits.</div>');
+ }catch(err){
+   console.error('Hospitality Action Center',err);
+   box.innerHTML=`<div class="action-center-head"><div><div class="action-center-title">Volunteer responses</div><div class="action-center-sub">The visits loaded, but volunteer responses could not be summarized.</div></div></div><div class="card error"><b>Action Center data error</b><div class="fieldhint">${esc(err?.message||String(err))}</div><button class="secondary" style="margin-top:10px" onclick="loadHospitality()">↻ Retry</button></div>`;
+ }
+}
+async function bulkAssignAllSuggested(){
+ const future=hospitalityVisits.filter(v=>v.public_talks?.talk_date>=new Date().toISOString().slice(0,10)&&v.status!=='cancelled');
+ const used={};
+ for(const v of future){
+   const needs=visitNeeds(v).filter(n=>!activeAssignment(n)&&actionOffersForNeed(n).length);
+   for(const n of needs){
+     const choices=actionOffersForNeed(n).map(o=>({...o,weighted:o.score+(used[normalizeVolunteerName(o.name)]||0)*2}))
+       .sort((a,b)=>a.weighted-b.weighted||a.name.localeCompare(b.name));
+     const best=choices[0]; if(!best)continue;
+     await quickAssignSilent(n.id,best.kind,best.id);
+     const uk=normalizeVolunteerName(best.name);
+     used[uk]=(used[uk]||0)+1;
+   }
+ }
+ await loadHospitality();
+}
+async function quickAssign(needId,kind,id){const old=volunteerAssignments.find(x=>x.need_id===needId&&x.active!==false);if(old)await sb.from('hospitality_volunteer_assignments').update({active:false,updated_at:new Date().toISOString()}).eq('id',old.id);const payload={need_id:needId,assigned_by:profile.id,active:true,volunteer_id:kind==='profile'?id:null,guest_offer_id:kind==='guest'?id:null};const r=await sb.from('hospitality_volunteer_assignments').insert(payload);if(r.error){alert('Assignment failed: '+r.error.message);return}await sb.from('hospitality_needs').update({status:'assigned',updated_at:new Date().toISOString()}).eq('id',needId);await loadHospitality()}
+async function bulkAssignVisit(visitId){const needs=visitNeeds({id:visitId}).filter(n=>!activeAssignment(n)&&actionOffersForNeed(n).length);if(!needs.length)return;const used={};for(const n of needs){const choices=actionOffersForNeed(n).map(o=>({...o,weighted:o.score+(used[normalizeVolunteerName(o.name)]||0)*2})).sort((a,b)=>a.weighted-b.weighted||a.name.localeCompare(b.name));const best=choices[0];if(!best)continue;await quickAssignSilent(n.id,best.kind,best.id);used[best.kind+':'+best.id]=(used[best.kind+':'+best.id]||0)+1}await loadHospitality()}
+async function quickAssignSilent(needId,kind,id){const old=volunteerAssignments.find(x=>x.need_id===needId&&x.active!==false);if(old)await sb.from('hospitality_volunteer_assignments').update({active:false,updated_at:new Date().toISOString()}).eq('id',old.id);const payload={need_id:needId,assigned_by:profile.id,active:true,volunteer_id:kind==='profile'?id:null,guest_offer_id:kind==='guest'?id:null};const r=await sb.from('hospitality_volunteer_assignments').insert(payload);if(!r.error)await sb.from('hospitality_needs').update({status:'assigned',updated_at:new Date().toISOString()}).eq('id',needId)}
+function renderHospitality(){const today=new Date().toISOString().slice(0,10);const future=hospitalityVisits.filter(v=>v.public_talks?.talk_date>=today&&v.status!=='cancelled');const incomplete=future.filter(v=>missingHospitality(v).length);$('hospitalitySummary').innerHTML=`<div class="card metric blue"><div class="t">Upcoming visits</div><div class="n">${future.length}</div></div><div class="card metric orange"><div class="t">Information needed</div><div class="n">${incomplete.length}</div></div>`;$('hospitalityList').innerHTML=future.length?future.sort((a,b)=>a.public_talks.talk_date.localeCompare(b.public_talks.talk_date)).map(v=>{const t=v.public_talks,sp=Array.isArray(t.speakers)?t.speakers[0]:t.speakers,miss=missingHospitality(v);return `<div class="card hospcard" onclick="openHospitality('${v.id}')"><div class="row"><div><b>${esc(new Date(t.talk_date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'}))}</b><div><b>${esc(sp?.full_name||'Speaker')}</b></div><div class="muted">${esc(sp?.congregation||'')}</div></div><span class="pill ${miss.length?'orange':'green'}">${miss.length?'Information needed':'Planning'}</span></div><div class="hospmeta"><span class="quickstat">${esc(v.total_visitors||t.total_persons||'—')} visitors</span>${v.arrival_mode?`<span class="quickstat">Arrival: ${esc(v.arrival_mode)}</span>`:''}</div>${miss.length?`<div class="fieldhint missing">Missing: ${esc(miss.join(' · '))}</div>`:''}</div>`}).join(''):'<div class="card"><b>No upcoming in-person visits.</b></div>';renderHospitalityActionCenter(future)}
+function speakerHomeLocation(){const v=hospitalityVisits.find(x=>x.id===$('hVisitId').value),sp=Array.isArray(v?.public_talks?.speakers)?v.public_talks.speakers[0]:v?.public_talks?.speakers;return [sp?.city,sp?.state_region,sp?.country].filter(Boolean).join(', ')}
+function syncTransportFromArrival(){const mode=$('hArrivalMode').value;if(mode&&!$('hDepartureMode').value)$('hDepartureMode').value=mode;const home=speakerHomeLocation();if(home&&!$('hArrivalPlace').value)$('hArrivalPlace').value=home;if(home&&!$('hDeparturePlace').value)$('hDeparturePlace').value=home}
+function updateTransportUI(){const cfg=(mode,which)=>{const lab=$(which+'PlaceLabel'),inp=$(which+'Place');if(!lab||!inp)return;const map={car:[which==='hArrival'?'Coming from':'Destination','City or address'],train:[which==='hArrival'?'Origin / train details':'Destination / train details','City, station or train number…'],plane:[which==='hArrival'?'Origin / flight details':'Destination / flight details','City, airport or flight number…'],other:['Arrival / departure details','Enter practical details'], '':['Place / details','']};const x=map[mode]||map[''];lab.textContent=x[0];inp.placeholder=x[1]};cfg($('hArrivalMode').value,'hArrival');cfg($('hDepartureMode').value,'hDeparture')}
+function autoNights(){const a=$('hArrivalDate').value,d=$('hDepartureDate').value;if(a&&d){const n=Math.round((new Date(d+'T12:00:00')-new Date(a+'T12:00:00'))/86400000);if(n>=0)$('hNights').value=n}}
+function renderNeeds(v){const types=[['accommodation','Accommodation','essential'],['pickup','Pickup','essential'],['dropoff','Drop-off','essential'],['city_visit','City visit','nice_to_have'],['field_service','Field service','nice_to_have']];const rows=types.map(([type,title,importance])=>{const n=hospitalityNeeds.find(x=>x.visit_id===v.id&&x.need_type===type);const status=n?.status||'open';return `<div class="needrow"><div class="needhead"><div><b>${title}</b><div class="fieldhint">${importance.replaceAll('_',' ')}</div></div><select class="field" style="width:auto;padding:8px" data-need-type="${type}" data-importance="${importance}" onchange="updateHospitalityReadiness()"><option value="open" ${status==='open'?'selected':''}>Open</option><option value="not_required" ${status==='not_required'?'selected':''}>Not required</option><option value="offers_received" ${status==='offers_received'?'selected':''}>Offers received</option><option value="assigned" ${status==='assigned'?'selected':''}>Assigned</option><option value="completed" ${status==='completed'?'selected':''}>Completed</option></select></div>${assignmentManager(n?.id,type)}</div>`}).join('');$('hNeeds').innerHTML=rows;setTimeout(updateHospitalityReadiness,0)}
+function mealNeedType(meal,date){return 'meal_'+meal+'_'+date}
+function mealLabel(meal){return meal.charAt(0).toUpperCase()+meal.slice(1)}
+function mealDates(){const a=$('hArrivalDate').value,d=$('hDepartureDate').value;if(a&&d&&d>=a){const out=[],x=new Date(a+'T12:00:00'),end=new Date(d+'T12:00:00');while(x<=end&&out.length<15){out.push(x.toISOString().slice(0,10));x.setDate(x.getDate()+1)}return out}const visit=hospitalityVisits.find(x=>x.id===$('hVisitId').value);const talkDate=visit?.public_talks?.talk_date||'';return talkDate?[talkDate]:[]}
+const PICNIC_LOCATIONS=['Parc Hentsch / Hippomène','Parc de la Dôle','Parc des Franchises','Parc Cayla','Other location'];
+function picnicNeedType(date){return 'picnic_'+date}
+function picnicDateOptions(){return mealDates().map(d=>`<option value="${d}">${new Date(d+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</option>`).join('')}
+function renderPicnic(){const box=$('hPicnic');if(!box)return;const dates=mealDates();if(!dates.length){box.innerHTML='';return}const visit=hospitalityVisits.find(x=>x.id===$('hVisitId').value),talkDate=visit?.public_talks?.talk_date||'',meeting=(talks.find(t=>t.id===visit?.public_talks?.id)?.meeting_time||visit?.public_talks?.meeting_time||'').slice(0,5),month=talkDate?Number(talkDate.slice(5,7)):0;const existing=hospitalityNeeds.find(x=>x.visit_id===$('hVisitId').value&&x.need_type?.startsWith('picnic_'));const exDate=existing?.need_type?.slice(7)||dates[0],meta=existing?.title||'',parts=meta.split(' · '),loc=parts[1]||'Parc Hentsch / Hippomène';const season=(month>=5&&month<=9),early=meeting&&meeting<'18:00';const hint=season?(early?'Good-season option; the meeting time also leaves more room for an after-meeting picnic.':'Good-season option, but the coordinator should check whether the meeting ends too late.'):'Optional activity; consider weather and daylight before activating.';box.innerHTML=`<div class="picnicbox"><div><b style="font-size:12px">Optional picnic</b><div class="fieldhint">${esc(hint)} A picnic is never opened automatically.</div></div><div class="picnicgrid"><div><label>Picnic</label><select id="hPicnicEnabled" class="field" onchange="togglePicnicUI()"><option value="no" ${existing?'':'selected'}>Not planned</option><option value="yes" ${existing?'selected':''}>Plan a picnic</option></select></div><div><label>Date</label><select id="hPicnicDate" class="field" onchange="picnicLunchWarning()">${picnicDateOptions()}</select></div><div><label>Location</label><select id="hPicnicLocation" class="field" onchange="toggleOtherPicnic()">${PICNIC_LOCATIONS.map(x=>`<option ${x===loc?'selected':''}>${x}</option>`).join('')}</select></div><div id="hPicnicOtherWrap" class="hidden"><label>Other location</label><input id="hPicnicOther" class="field" placeholder="Enter location"></div></div><div id="hPicnicWarning" class="fieldhint"></div></div>`;if($('hPicnicDate'))$('hPicnicDate').value=dates.includes(exDate)?exDate:dates[0];togglePicnicUI();toggleOtherPicnic();picnicLunchWarning()}
+function togglePicnicUI(){const on=$('hPicnicEnabled')?.value==='yes';['hPicnicDate','hPicnicLocation','hPicnicOther'].forEach(id=>{if($(id))$(id).disabled=!on});picnicLunchWarning()}
+function toggleOtherPicnic(){const w=$('hPicnicOtherWrap');if(w)w.classList.toggle('hidden',$('hPicnicLocation')?.value!=='Other location')}
+function picnicLunchWarning(){const w=$('hPicnicWarning');if(!w)return;if($('hPicnicEnabled')?.value!=='yes'){w.textContent='';return}const d=$('hPicnicDate')?.value,type=mealNeedType('lunch',d),sel=[...document.querySelectorAll('#hMeals select[data-need-type]')].find(x=>x.dataset.needType===type);w.innerHTML=sel&&sel.value!=='not_required'?'<b>Lunch is still active for this date.</b> Saving the picnic will set that Lunch to Not required to avoid duplicate requests.':''}
+function fairnessText(volunteerId,type){const assigned=volunteerAssignments.filter(a=>a.volunteer_id===volunteerId&&a.active!==false);const same=assigned.filter(a=>{const n=hospitalityNeeds.find(x=>x.id===a.need_id);if(type?.startsWith('meal_'))return n?.need_type?.startsWith('meal_');if(type?.startsWith('picnic_'))return n?.need_type?.startsWith('picnic_');return n?.need_type===type});return `${same.length} recent ${type?.startsWith('meal_')?'meal':type?.startsWith('picnic_')?'picnic':type?.replaceAll('_',' ')} assignment${same.length===1?'':'s'} · ${assigned.length} total`}
+function renderMeals(){const box=$('hMeals');if(!box)return;const dates=mealDates();if(!dates.length){box.innerHTML='<div class="fieldhint" style="margin-top:6px">Meeting date unavailable. Add travel dates to generate meals.</div>';return}const hasTravelDates=!!($('hArrivalDate').value&&$('hDepartureDate').value&&$('hDepartureDate').value>=$('hArrivalDate').value);const at=hasTravelDates?($('hArrivalTime').value||''):'' ,dt=hasTravelDates?($('hDepartureTime').value||''):'';const notice=hasTravelDates?'':'<div class="notice" style="margin-top:7px"><b>Travel dates needed</b><div class="fieldhint">Meals are currently based on the meeting day only. Add arrival and departure dates to expand the meal plan.</div></div>';box.innerHTML=notice+dates.map((date,i)=>{let meals=['breakfast','lunch','dinner'];if(i===0&&at){if(at>='10:30')meals=meals.filter(m=>m!=='breakfast');if(at>='14:30')meals=meals.filter(m=>m!=='lunch');if(at>='21:00')meals=meals.filter(m=>m!=='dinner')}if(i===dates.length-1&&dt){if(dt<'08:00')meals=meals.filter(m=>m!=='breakfast');if(dt<'11:00')meals=meals.filter(m=>m!=='lunch');if(dt<'17:00')meals=meals.filter(m=>m!=='dinner')}const day=new Date(date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});return `<div class="mealday"><div class="mealdate">${day}</div>${meals.map(meal=>{const type=mealNeedType(meal,date),n=hospitalityNeeds.find(x=>x.visit_id===$('hVisitId').value&&x.need_type===type),status=n?.status||'open';return `<div class="mealrow"><div class="mealname">${mealLabel(meal)}</div><div><select class="field" data-need-type="${type}" data-importance="important" data-meal="1" onchange="updateHospitalityReadiness()"><option value="open" ${status==='open'?'selected':''}>Open</option><option value="not_required" ${status==='not_required'?'selected':''}>Not required</option><option value="offers_received" ${status==='offers_received'?'selected':''}>Offers received</option><option value="assigned" ${status==='assigned'?'selected':''}>Assigned</option><option value="completed" ${status==='completed'?'selected':''}>Completed</option></select>${assignmentManager(n?.id,type)}</div></div>`}).join('')}</div>`}).join('')}
+function displayNeedTitle(n){if(!n)return '';if(n.need_type?.startsWith('picnic_')){const d=n.need_type.slice(7);return new Date(d+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})+' · Picnic'}if(n.need_type?.startsWith('meal_')){const m=n.need_type.match(/^meal_(breakfast|lunch|dinner)_(\d{4}-\d{2}-\d{2})$/);if(m){const d=new Date(m[2]+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});return d+' · '+mealLabel(m[1])}}return n.title||n.need_type?.replaceAll('_',' ')||'Hospitality need'}
+function personName(id){const p=publisherProfiles.find(x=>x.id===id);return p?.full_name||p?.email||'Volunteer'}
+function assignmentManager(needId,type){if(!canHosp()||!needId)return '<div class="mealhint">Save first to enable volunteers & assignment.</div>';const offers=volunteerOffers.filter(x=>x.need_id===needId&&x.status==='offered'),guests=guestVolunteerOffers.filter(x=>x.need_id===needId&&x.status==='offered'),a=volunteerAssignments.find(x=>x.need_id===needId&&x.active!==false);const authOpts=offers.map(o=>`<option value="profile:${esc(o.volunteer_id)}" ${a?.volunteer_id===o.volunteer_id?'selected':''}>${esc(personName(o.volunteer_id))} — ${esc(fairnessText(o.volunteer_id,type))}</option>`).join('');const guestOpts=guests.map(o=>`<option value="guest:${esc(o.id)}" ${a?.guest_offer_id===o.id?'selected':''}>${esc(o.first_name+' '+o.last_name)} — guest volunteer</option>`).join('');const count=offers.length+guests.length;const assignedName=a?.guest_offer_id?(guestVolunteerOffers.find(x=>x.id===a.guest_offer_id)?.first_name+' '+guestVolunteerOffers.find(x=>x.id===a.guest_offer_id)?.last_name):personName(a?.volunteer_id);return `<div class="assignbox"><select class="field" id="assign_${needId}"><option value="">${count?'Select volunteer':'No offers yet'}</option>${authOpts}${guestOpts}</select><button class="mini" type="button" onclick="assignVolunteer('${needId}','${esc(type)}')">Assign</button></div>${a?`<div class="voloffer">Assigned: <b>${esc(assignedName||'Volunteer')}</b></div>`:count?`<div class="voloffer">${count} offer${count>1?'s':''} received</div>`:''}`}
+async function assignVolunteer(needId,type){const choice=$('assign_'+needId)?.value;if(!choice){$('hSaveMsg').textContent='Select a volunteer first.';return}const [kind,id]=choice.split(':');const old=volunteerAssignments.find(x=>x.need_id===needId&&x.active!==false);if(old)await sb.from('hospitality_volunteer_assignments').update({active:false,updated_at:new Date().toISOString()}).eq('id',old.id);const payload={need_id:needId,assigned_by:profile.id,active:true,volunteer_id:kind==='profile'?id:null,guest_offer_id:kind==='guest'?id:null};const {error}=await sb.from('hospitality_volunteer_assignments').insert(payload);if(error){$('hSaveMsg').textContent='Assignment failed: '+error.message;return}await sb.from('hospitality_needs').update({status:'assigned',updated_at:new Date().toISOString()}).eq('id',needId);$('hSaveMsg').textContent='Volunteer assigned.';await loadHospitality();setTimeout(()=>openHospitality($('hVisitId').value),120)}
+async function loadVolunteerBoard(){if(!canVolunteer())return;const [nr,or,ar,vr]=await Promise.all([sb.from('hospitality_needs').select('*').in('status',['open','offers_received','assigned']).order('created_at'),sb.from('hospitality_volunteer_offers').select('*'),sb.from('hospitality_volunteer_assignments').select('*'),sb.from('hospitality_visit_details').select('id,public_talks(talk_date,speakers(full_name))')]);if(nr.error){$('volunteerList').innerHTML='<div class="card error">Volunteer setup required: '+esc(nr.error.message)+'</div>';return}hospitalityNeeds=nr.data||[];volunteerOffers=or.error?[]:(or.data||[]);volunteerAssignments=ar.error?[]:(ar.data||[]);const visits=vr.error?[]:(vr.data||[]);const cards=hospitalityNeeds.filter(n=>n.status!=='assigned'||volunteerAssignments.some(a=>a.need_id===n.id&&a.volunteer_id===profile.id&&a.active!==false)).map(n=>{const v=visits.find(x=>x.id===n.visit_id),t=v?.public_talks,sp=Array.isArray(t?.speakers)?t.speakers[0]:t?.speakers;const mine=volunteerOffers.find(o=>o.need_id===n.id&&o.volunteer_id===profile.id&&o.status==='offered'),assigned=volunteerAssignments.find(a=>a.need_id===n.id&&a.active!==false);const date=t?.talk_date?new Date(t.talk_date+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'';return `<div class="volcard"><div class="volhead"><div><b>${esc(displayNeedTitle(n))}</b><div class="fieldhint">${esc(sp?.full_name||'Visiting speaker')} · ${esc(date)}</div></div><span class="pill ${n.status==='assigned'?'confirmed':'details_missing'}">${n.status==='assigned'?'Assigned':'Open'}</span></div>${assigned?`<div class="voloffer">Assigned to <b>${esc(personName(assigned.volunteer_id))}</b></div>`:mine?`<div class="volactions"><button class="withdrawbtn" onclick="withdrawOffer('${n.id}')">Withdraw my offer</button></div>`:`<div class="volactions"><button class="offerbtn" onclick="offerHelp('${n.id}')">I can help</button></div>`}</div>`}).join('');$('volunteerList').innerHTML=cards||'<div class="card muted">There are no open hospitality needs at the moment.</div>'}
+async function offerHelp(needId){const {error}=await sb.from('hospitality_volunteer_offers').upsert({need_id:needId,volunteer_id:profile.id,status:'offered',updated_at:new Date().toISOString()},{onConflict:'need_id,volunteer_id'});if(error){alert(error.message);return}await sb.from('hospitality_needs').update({status:'offers_received',updated_at:new Date().toISOString()}).eq('id',needId);await loadVolunteerBoard()}
+async function withdrawOffer(needId){const {error}=await sb.from('hospitality_volunteer_offers').update({status:'withdrawn',updated_at:new Date().toISOString()}).eq('need_id',needId).eq('volunteer_id',profile.id);if(error){alert(error.message);return}const {data}=await sb.from('hospitality_volunteer_offers').select('id').eq('need_id',needId).eq('status','offered');if(!(data||[]).length)await sb.from('hospitality_needs').update({status:'open',updated_at:new Date().toISOString()}).eq('id',needId);await loadVolunteerBoard()}
+function currentNeedRows(){const rows=[...document.querySelectorAll('#hNeeds select[data-need-type], #hMeals select[data-need-type]')].map(el=>({type:el.dataset.needType,importance:el.dataset.importance,status:el.value,title:el.dataset.meal?((el.closest('.mealday')?.querySelector('.mealdate')?.textContent||'')+' '+(el.closest('.mealrow')?.querySelector('.mealname')?.textContent||'')):el.closest('.needrow')?.querySelector('b')?.textContent||el.dataset.needType}));if($('hPicnicEnabled')?.value==='yes'){const d=$('hPicnicDate').value;rows.push({type:picnicNeedType(d),importance:'nice_to_have',status:'open',title:new Date(d+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})+' Picnic'})}return rows}
+function updateHospitalityReadiness(){const box=$('hReadiness');if(!box)return;const rows=currentNeedRows(),essential=rows.filter(x=>x.importance==='essential'&&['open','offers_received'].includes(x.status)),important=rows.filter(x=>x.importance==='important'&&['open','offers_received'].includes(x.status));const missing=missingHospitalityFromForm();if(missing.length){box.innerHTML=`<b>Information needed</b><div class="fieldhint">Missing visit details: ${esc(missing.join(' · '))}</div>`}else if(essential.length){box.innerHTML=`<b>Planning — essential needs still open</b><div class="fieldhint">${esc(essential.map(x=>x.title).join(' · '))}</div>`}else if(important.length){box.innerHTML=`<b>Core arrangements ready</b><div class="fieldhint">Important items still being arranged: ${esc(important.map(x=>x.title).join(' · '))}</div>`}else{box.innerHTML='<b>Ready</b><div class="fieldhint">No essential or important hospitality item is currently open.</div>'}}
+function missingHospitalityFromForm(){const a=[];if(!$('hVisitors').value)a.push('number of visitors');if(!$('hArrivalMode').value)a.push('means of arrival');if(!$('hArrivalDate').value)a.push('arrival date');if(!$('hArrivalTime').value)a.push('arrival time');if(!$('hArrivalPlace').value.trim())a.push('arrival details');if(!$('hDepartureDate').value)a.push('departure date');if(!$('hDepartureTime').value)a.push('departure time');return a}
+function openNeedsMessage(){const {v,sp}=currentVisitSpeaker();if(!v)return '';const rows=currentNeedRows().filter(x=>x.status==='open'),date=new Date(v.public_talks.talk_date+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});if(!rows.length)return `Hospitality update for ${sp?.full_name||'our visiting speaker'} on ${date}: there are currently no open volunteer needs. Thank you.`;const link=volunteerPortalUrl?`\n\nOpen Volunteer Portal:\n${volunteerPortalUrl}\n\nNo account is required. Simply enter your first and last name and select where you can help.`:'';return `Dear brothers and sisters, we are organizing hospitality for ${sp?.full_name||'our visiting speaker'} on ${date}. We are currently looking for help with: ${rows.map(x=>x.title).join(', ')}. If you are available to help with one or more of these needs, please use the Volunteer Portal.${link}\n\nThank you very much for your support.`}
+async function copyOpenNeeds(){const msg=openNeedsMessage();try{await navigator.clipboard.writeText(msg);$('hSaveMsg').textContent='Open-needs message copied.'}catch(e){$('hSaveMsg').textContent='Copy failed. You can still use Share open needs.'}}
+function shareOpenNeeds(){const msg=openNeedsMessage();window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank')}
+async function saveNeeds(visitId){const errors=[];for(const el of document.querySelectorAll('#hNeeds select[data-need-type], #hMeals select[data-need-type]')){const type=el.dataset.needType,status=el.value,importance=el.dataset.importance,existing=hospitalityNeeds.find(x=>x.visit_id===visitId&&x.need_type===type);let r;if(existing){r=await sb.from('hospitality_needs').update({status,importance,updated_at:new Date().toISOString()}).eq('id',existing.id)}else if(status!=='not_required'){r=await sb.from('hospitality_needs').insert({visit_id:visitId,need_type:type,title:type.replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase()),importance,status})}if(r?.error)errors.push(type+': '+r.error.message)}const priorPicnics=hospitalityNeeds.filter(x=>x.visit_id===visitId&&x.need_type?.startsWith('picnic_'));if($('hPicnicEnabled')?.value==='yes'){const d=$('hPicnicDate').value,type=picnicNeedType(d),loc=$('hPicnicLocation').value==='Other location'?($('hPicnicOther').value.trim()||'Other location'):$('hPicnicLocation').value,title='Picnic · '+loc,existing=priorPicnics.find(x=>x.need_type===type);for(const p of priorPicnics.filter(x=>x.id!==existing?.id))await sb.from('hospitality_needs').update({status:'not_required',updated_at:new Date().toISOString()}).eq('id',p.id);let pr;if(existing)pr=await sb.from('hospitality_needs').update({title,status:existing.status==='not_required'?'open':existing.status,importance:'nice_to_have',updated_at:new Date().toISOString()}).eq('id',existing.id);else pr=await sb.from('hospitality_needs').insert({visit_id:visitId,need_type:type,title,importance:'nice_to_have',status:'open'});if(pr?.error)errors.push('picnic: '+pr.error.message);const lunch=mealNeedType('lunch',d),lunchEl=[...document.querySelectorAll('#hMeals select[data-need-type]')].find(x=>x.dataset.needType===lunch);if(lunchEl&&lunchEl.value!=='not_required'){lunchEl.value='not_required';const ln=hospitalityNeeds.find(x=>x.visit_id===visitId&&x.need_type===lunch);if(ln)await sb.from('hospitality_needs').update({status:'not_required',updated_at:new Date().toISOString()}).eq('id',ln.id)}}else{for(const p of priorPicnics)await sb.from('hospitality_needs').update({status:'not_required',updated_at:new Date().toISOString()}).eq('id',p.id)}return errors}
+function openHospitality(id){const v=hospitalityVisits.find(x=>x.id===id);if(!v)return;const t=v.public_talks,joinedSp=Array.isArray(t.speakers)?t.speakers[0]:t.speakers,sp=speakers.find(s=>String(s.id)===String(t.speaker_id))||joinedSp;$('hVisitId').value=v.id;$('hospHeading').textContent=(sp?.full_name||'Speaker')+' · '+new Date(t.talk_date+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});$('hVisitors').value=v.total_visitors||t.total_persons||'';$('hArrivalMode').value=v.arrival_mode||'';$('hArrivalDate').value=v.arrival_date||'';$('hArrivalTime').value=(v.arrival_time||'').slice(0,5);$('hArrivalPlace').value=v.arrival_place||'';$('hDepartureMode').value=v.departure_mode||'';$('hDepartureDate').value=v.departure_date||'';$('hDepartureTime').value=(v.departure_time||'').slice(0,5);$('hDeparturePlace').value=v.departure_place||'';$('hAccommodation').value=v.accommodation_needed===true?'yes':v.accommodation_needed===false?'no':'';$('hNights').value=v.nights??'';$('hDiet').value=v.dietary_requirements||'';$('hNotes').value=v.hospitality_notes||'';const home=[sp?.city,sp?.state_region,sp?.country].filter(Boolean).join(', ');if(!v.departure_mode&&v.arrival_mode)$('hDepartureMode').value=v.arrival_mode;if(home&&!v.arrival_place)$('hArrivalPlace').value=home;if(home&&!v.departure_place)$('hDeparturePlace').value=home;updateTransportUI();renderNeeds(v);renderMeals();renderPicnic();const phone=sp?.phone||'';$('hSpeakerContact').innerHTML=`<b>Speaker contact</b><br>${esc(sp?.full_name||'')} ${phone?'· '+esc(phone):'· Phone not recorded'}${phone?`<div class="hospactions"><button class="mini wa" onclick="openSpeakerWhatsApp('${esc(phone)}')">Open WhatsApp</button></div>`:''}`;const w=monthWeatherGuidance(t.talk_date);$('hWeather').innerHTML=`<b>Historical weather guidance</b><div class="muted">Long-range guidance — this is not a forecast.</div><div style="margin-top:7px"><b>${w.temp}</b> · ${esc(w.conditions)}</div><div class="fieldhint">Clothing: ${esc(w.clothes)}. When the visit is close enough, this panel can switch to the live forecast.</div>`;renderCommunication(v,sp,w);$('hospModal').classList.add('open');setTimeout(updateHospitalityReadiness,0)}
+function closeHospitality(){$('hospModal').classList.remove('open')}
+function openSpeakerWhatsApp(phone){const p=String(phone||'').replace(/[^0-9]/g,'');if(p)window.open('https://wa.me/'+p,'_blank')}
+function templateText(t,v,sp,w){const talk=v.public_talks,miss=missingHospitality(v).join(', ')||'No essential information is currently missing';return t.body.replaceAll('{{speaker}}',sp?.full_name||'Brother').replaceAll('{{coordinator}}',profile?.full_name||'Hospitality Coordinator').replaceAll('{{date}}',new Date(talk.talk_date+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})).replaceAll('{{missing_items}}',miss).replaceAll('{{visitor_text}}',v.total_visitors?' ('+v.total_visitors+' visitors)':'').replaceAll('{{weather_guidance}}',w.temp+'; '+w.conditions+'. Suggested clothing: '+w.clothes+'.').replaceAll('{{open_needs}}','Open needs will be inserted from the Hospitality needs list.').replaceAll('{{arrangements}}','Confirmed arrangements will be inserted here.').replaceAll('{{assignment_details}}','Your assigned hospitality task will be inserted here.')}
+function communicationOpenNeeds(v){
+  const db=(hospitalityNeeds||[]).filter(n=>n.visit_id===v.id&&n.status==='open');
+  return db.map(n=>n.title||n.need_type).filter(Boolean);
+}
+function communicationPlan(v,sp){
+  const talkDate=new Date(v.public_talks.talk_date+'T12:00:00'), now=new Date();
+  const daysToTalk=Math.ceil((talkDate-now)/86400000);
+  const missing=missingHospitality(v);
+  const open=communicationOpenNeeds(v);
+  const sent=hospitalityComms.filter(c=>c.visit_id===v.id&&c.status==='sent');
+  const wasSent=key=>sent.some(c=>(c.message_text||'').includes('[Checkpoint '+key+']'));
+  const checkpoints=[30,14,7].map(day=>{
+    const due=new Date(talkDate); due.setDate(due.getDate()-day);
+    const delta=Math.ceil((due-now)/86400000);
+    return {day,key:'J-'+day,due,delta,sent:wasSent('J-'+day)};
+  });
+  return {talkDate,daysToTalk,missing,open,checkpoints};
+}
+function speakerInfoMessage(v,sp,plan,key){
+  const date=new Date(v.public_talks.talk_date+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  const items=plan.missing.length?plan.missing.join(', '):'No critical travel information is currently missing';
+  return `[Checkpoint ${key}]\nHello ${sp?.full_name||'Brother'},\n\nWe are preparing the hospitality arrangements for your visit to Geneva on ${date}. Could you please help us confirm the following information: ${items}?\n\nThank you very much.\n${profile?.full_name||'Hospitality Coordinator'}`;
+}
+function groupNeedsMessage(v,sp,plan,key){
+  const date=new Date(v.public_talks.talk_date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+  const items=plan.open.length?plan.open.map(x=>'• '+x).join('\n'):'• No open volunteer needs';
+  const link=volunteerPortalUrl?`\n\nOpen Volunteer Portal:\n${volunteerPortalUrl}\n\nNo account is required. Simply enter your first and last name and select where you can help.`:'';return `[Checkpoint ${key}]\nHospitality support for ${sp?.full_name||'our visiting speaker'} — ${date}\n\nThe following needs are still open:\n${items}\n\nPlease use the Volunteer Portal if you can help.${link}\n\nThank you!`;
+}
+function renderCommunication(v,sp,w){
+  const plan=communicationPlan(v,sp), next=plan.checkpoints.find(c=>!c.sent&&(c.delta<=0||c===plan.checkpoints[0]))||plan.checkpoints.find(c=>!c.sent);
+  const missingCount=plan.missing.length, openCount=plan.open.length;
+  const checkpointHtml=plan.checkpoints.map(c=>{const label=c.sent?'Sent':c.delta===0?'Due today':c.delta<0?`Overdue ${Math.abs(c.delta)}d`:`In ${c.delta}d`;return `<span class="quickstat ${c.sent?'green':''}">${c.key} · ${label}</span>`}).join('');
+  if(!next){$('hCommunication').innerHTML=`<div class="ok"><b>Scheduled communications completed.</b><div class="fieldhint">All J-30 / J-14 / J-7 checkpoints have been marked as sent.</div></div>`;return}
+  const speakerMsg=speakerInfoMessage(v,sp,plan,next.key), groupMsg=groupNeedsMessage(v,sp,plan,next.key);
+  const dueLabel=next.due.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+  const timing=next.delta===0?'Due today':next.delta<0?`Overdue by ${Math.abs(next.delta)} days`:`Scheduled ${dueLabel} · in ${next.delta} days`;
+  $('hCommunication').innerHTML=`
+    <div class="hospmeta" style="margin-bottom:10px">${checkpointHtml}</div>
+    <div class="card" style="box-shadow:none;margin-bottom:10px"><b>${next.key} checkpoint</b><div class="${next.delta<0?'dueover':'duefuture'}" style="margin-top:5px">${esc(timing)}</div><div class="fieldhint">Two separate actions are shown so speaker information and group volunteer requests are never mixed.</div></div>
+    <div class="card" style="box-shadow:none;margin-bottom:10px"><b>1 · Speaker information</b><div class="muted">${missingCount?missingCount+' critical item'+(missingCount===1?'':'s')+' missing':'No critical information missing'}</div>${missingCount?`<div class="fieldhint missing">${esc(plan.missing.join(' · '))}</div><textarea id="hSpeakerMessagePreview" class="field" rows="6" style="margin-top:8px">${esc(speakerMsg)}</textarea><div class="hospactions">${sp?.phone?'<button class="mini wa" onclick="shareCheckpointMessage(\'speaker\')">Open WhatsApp</button>':''}<button class="mini" onclick="copyCheckpointMessage('speaker')">Copy message</button><button class="mini" onclick="markCheckpointSent('speaker','${next.key}')">Mark as sent</button></div>`:'<div class="ok" style="margin-top:8px">Nothing to request from the speaker at this checkpoint.</div>'}</div>
+    <div class="card" style="box-shadow:none"><b>2 · Group volunteer needs</b><div class="muted">${openCount?openCount+' open need'+(openCount===1?'':'s'):'No open volunteer needs'}</div>${openCount?`<textarea id="hGroupMessagePreview" class="field" rows="6" style="margin-top:8px">${esc(groupMsg)}</textarea><div class="hospactions"><button class="mini wa" onclick="shareCheckpointMessage('group')">Open WhatsApp</button><button class="mini" onclick="copyCheckpointMessage('group')">Copy message</button><button class="mini" onclick="markCheckpointSent('group','${next.key}')">Mark as sent</button></div>`:'<div class="ok" style="margin-top:8px">No group request is needed.</div>'}</div>
+    <div class="fieldhint" style="margin-top:8px">Only needs currently marked Open are included. Offers received, Assigned, Completed and Not required are excluded.</div>`;
+}
+function checkpointText(kind){return $(kind==='speaker'?'hSpeakerMessagePreview':'hGroupMessagePreview')?.value||''}
+function shareCheckpointMessage(kind){const {sp}=currentVisitSpeaker(),msg=checkpointText(kind);if(kind==='speaker'){const p=String(sp?.phone||'').replace(/[^0-9]/g,'');if(p)window.open('https://wa.me/'+p+'?text='+encodeURIComponent(msg),'_blank')}else window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank')}
+async function copyCheckpointMessage(kind){const msg=checkpointText(kind);try{await navigator.clipboard.writeText(msg);$('hSaveMsg').textContent='Message copied.'}catch(e){$('hSaveMsg').textContent='Select and copy the message manually.'}}
+async function markCheckpointSent(kind,key){const {v,sp}=currentVisitSpeaker();if(!v)return;const msg=checkpointText(kind);if(!msg)return;const audience=kind==='speaker'?'speaker':'group';const payload={visit_id:v.id,template_id:null,audience,recipient_name:kind==='speaker'?(sp?.full_name||null):'Geneva Tagalog Group',recipient_phone:kind==='speaker'?(sp?.phone||null):null,message_text:msg,channel:'whatsapp',status:'sent',sent_at:new Date().toISOString(),sent_by:profile.id};const {error}=await sb.from('hospitality_communications').insert(payload);$('hSaveMsg').textContent=error?'Could not log communication: '+error.message:`${key} ${kind==='speaker'?'speaker':'group'} communication marked as sent.`;if(!error){await loadHospitality();setTimeout(()=>openHospitality(v.id),100)}}
+async function saveHospitality(){const id=$('hVisitId').value;const {v}=currentVisitSpeaker();const visitors=$('hVisitors').value?Number($('hVisitors').value):null;const payload={total_visitors:visitors,arrival_mode:$('hArrivalMode').value||null,arrival_date:$('hArrivalDate').value||null,arrival_time:$('hArrivalTime').value||null,arrival_place:$('hArrivalPlace').value.trim()||null,departure_mode:$('hDepartureMode').value||null,departure_date:$('hDepartureDate').value||null,departure_time:$('hDepartureTime').value||null,departure_place:$('hDeparturePlace').value.trim()||null,accommodation_needed:$('hAccommodation').value===''?null:$('hAccommodation').value==='yes',nights:$('hNights').value?Number($('hNights').value):null,dietary_requirements:$('hDiet').value.trim()||null,hospitality_notes:$('hNotes').value.trim()||null,updated_by:profile.id,updated_at:new Date().toISOString()};$('hSaveMsg').textContent='Saving hospitality and needs…';$('hSaveMsg').className='statusline';const {error}=await sb.from('hospitality_visit_details').update(payload).eq('id',id);if(error){$('hSaveMsg').textContent='Hospitality save failed: '+error.message;$('hSaveMsg').className='statusline error';return}const needErrors=await saveNeeds(id);let syncError=null;if(v?.public_talks?.id&&visitors!==null){const r=await sb.from('public_talks').update({total_persons:visitors,updated_by:profile.id,updated_at:new Date().toISOString()}).eq('id',v.public_talks.id);syncError=r.error}if(needErrors.length){$('hSaveMsg').textContent='Visit saved, but some needs could not be saved: '+needErrors.join(' · ');$('hSaveMsg').className='statusline error';return}if(syncError){$('hSaveMsg').textContent='Hospitality and needs saved, but Public Talks visitor sync failed: '+syncError.message;$('hSaveMsg').className='statusline error'}else{$('hSaveMsg').textContent='Hospitality and needs saved successfully.';$('hSaveMsg').className='statusline success'}await loadHospitality();setTimeout(()=>openHospitality(id),150)}
+function currentVisitSpeaker(){const v=hospitalityVisits.find(x=>x.id===$('hVisitId').value),sp=Array.isArray(v?.public_talks?.speakers)?v.public_talks.speakers[0]:v?.public_talks?.speakers;return {v,sp}}
+function openTalkById(id){if(!canTalks()||!id)return;showPage('talks');openTalk(String(id))}
+function openTalkFromCard(card){if(!canTalks()||!card)return;const id=card.dataset.talkId;if(!id)return;showPage('talks');openTalk(id)}
+function handleTalkCardEvent(e){const card=e.target.closest('.talk[data-talk-id]');if(!card)return;if(e.type==='keydown'&&!['Enter',' '].includes(e.key))return;if(e.type==='keydown')e.preventDefault();openTalkFromCard(card)}
+
+document.addEventListener('click',e=>{const card=e.target.closest('.talk[data-talk-id]');if(card)openTalkFromCard(card)});
+document.addEventListener('keydown',e=>{const card=e.target.closest('.talk[data-talk-id]');if(card&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openTalkFromCard(card)}});
+$('eSpeaker').oninput=onSpeakerNameChange;$('eSpeaker').onchange=onSpeakerNameChange;['eCongregation','eCity','eRegion','eCountry','eTimezone'].forEach(id=>{$(id).oninput=()=>{updateSpeakerInfo();updateStatusUI()}});$('eTalk').onchange=()=>{updateTalkInfo();updateStatusUI()};$('eSong').onchange=updateStatusUI;$('eDelivery').onchange=updateDeliveryFields;$('ePersons').oninput=updateStatusUI;$('ePrayerMode').onchange=updateDeliveryFields;$('ePrayerBrother').onchange=updateStatusUI;$('eStatus').onchange=()=>{statusManualOverride=true;updateStatusUI()};$('sendLink').onclick=sendMagic;$('signOut').onclick=async()=>{await sb.auth.signOut();location.reload()};$('saveTalk').onclick=saveTalk;
+['hArrivalDate','hDepartureDate','hArrivalTime','hDepartureTime'].forEach(id=>{const el=$(id);if(el)el.addEventListener('change',()=>{if(id.includes('Date'))calculateNights();renderMeals();updateHospitalityReadiness()})});
+$('search').oninput=renderTalks;$('statusFilter').onchange=renderTalks;$('modal').onclick=e=>{if(e.target===$('modal'))closeModal()};sb.auth.onAuthStateChange(()=>setTimeout(start,0));start();
+
+function forceCloseLegacyOverlays(){
+ ['hospModal','hospitalityModal','visitModal','speakerModal','modal'].forEach(id=>{
+   const el=document.getElementById(id);
+   if(el){el.classList.remove('open');el.classList.remove('active');}
+ });
+ const td=document.getElementById('tripDraft');if(td)td.classList.add('hidden');
+ document.querySelectorAll('.modal.open,.overlay.open').forEach(el=>el.classList.remove('open'));
+ document.body.style.overflow='';
+}
+document.addEventListener('click',e=>{
+ const b=e.target.closest('button[data-page]');
+ if(b){
+   forceCloseLegacyOverlays();
+   if(b.dataset.page==='trips') setTimeout(()=>{try{renderTripsPrototype()}catch(_){}},0);
+ }
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')forceCloseLegacyOverlays()});
+</script>
+
+<div id="tripSurveyManagerV3121" class="trip-modal hidden">
+  <div class="modalbox">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:start">
+      <div><h2 style="margin:0">Participant survey</h2><p class="muted" id="tripSurveyManagerTitle">Trip</p></div>
+      <button class="iconbtn" onclick="closeTripSurveyManagerV3121()">×</button>
+    </div>
+    <div class="notice" style="margin:12px 0">Share this link with participants. No account is required.</div>
+    <label>Survey link</label>
+    <input id="tripSurveyUrlV3121" readonly>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+      <button class="primary" onclick="openParticipantSurveyV3121()">Open survey</button>
+      <button class="secondary" onclick="copyTripSurveyV3121()">Copy link</button>
+    </div>
+    <button class="secondary" style="width:100%;margin-top:10px" onclick="shareTripSurveyWhatsAppV3121()">Share on WhatsApp</button>
+  </div>
+</div>
+
+<div id="participantSurveyV3121" class="trip-modal hidden">
+ <div class="modalbox">
+  <div style="display:flex;justify-content:space-between;gap:12px;align-items:start">
+   <div><h2 style="margin:0">Trip survey</h2><p class="muted" id="psTripInfoV3121">Loading…</p></div>
+   <button class="iconbtn" onclick="closeParticipantSurveyV3121()">×</button>
+  </div>
+  <div id="psErrorV3121" style="color:#a33;margin:8px 0"></div>
+  <div class="grid2">
+   <div><label>First name</label><input id="psFirstV3121"></div>
+   <div><label>Last name</label><input id="psLastV3121"></div>
+   <div><label>Adults</label><input id="psAdultsV3121" type="number" min="0" value="1"></div>
+   <div><label>Children</label><input id="psChildrenV3121" type="number" min="0" value="0"></div>
+  </div>
+  <label>Attendance</label>
+  <select id="psAttendanceV3121"><option value="interested">Interested</option><option value="confirmed">Confirmed</option><option value="not_attending">Not attending</option></select>
+  <label>Transport</label>
+  <select id="psTransportV3121" onchange="toggleSurveyFieldsV3121()"><option value="to_decide">To decide</option><option value="need_seat">I need a seat</option><option value="own_transport">I have my own transport</option></select>
+  <div id="psSeatsWrapV3121"><label>Seats I can offer</label><input id="psSeatsV3121" type="number" min="0" value="0"></div>
+  <label>Hotel needed</label>
+  <select id="psHotelV3121" onchange="toggleSurveyFieldsV3121()"><option value="">To decide</option><option value="yes">Yes</option><option value="no">No</option></select>
+  <div id="psHotelDetailsV3121" class="hidden grid2">
+   <div><label>Rooms needed</label><input id="psRoomsV3121" type="number" min="0" value="1"></div>
+   <div><label>Nights</label><input id="psNightsV3121" type="number" min="0" value="1"></div>
+  </div>
+  <label>Comments</label><textarea id="psNotesV3121"></textarea>
+  <button class="primary" style="width:100%;margin-top:14px" onclick="submitParticipantSurveyV3121()">Send response</button>
+  <button id="psWithdrawBtnV3121" class="secondary hidden" style="width:100%;margin-top:8px" onclick="withdrawParticipantSurveyV3121()">Withdraw my response</button>
+ </div>
+</div>
+
+
+<script>
+let tripCurrentV3121=null;
+let tripSurveyTokenV3121=null;
+const TRIP_RESPONSE_KEY_STORAGE='geneva_tg_trip_response_key_v3121';
+
+function valV3121(id){const e=document.getElementById(id);return e?e.value.trim():'';}
+function uuidV3121(){return (crypto.randomUUID?crypto.randomUUID():([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^crypto.getRandomValues(new Uint8Array(1))[0]&15>>c/4).toString(16)));}
+function responseKeyV3121(){let k=localStorage.getItem(TRIP_RESPONSE_KEY_STORAGE);if(!k){k=uuidV3121();localStorage.setItem(TRIP_RESPONSE_KEY_STORAGE,k)}return k;}
+
+function legacyEventTypeV3126(v){
+ const x=String(v||'').trim().toLowerCase();
+ return ({
+  'circuit assembly':'circuit_assembly',
+  'convention':'regional_convention',
+  'regional convention':'regional_convention',
+  'pioneer meeting':'pioneer_meeting',
+  'bethel visit':'bethel_visit',
+  'special event':'special_event',
+  'group trip':'other',
+  'other':'other'
+ })[x]||'other';
+}
+function legacyStatusV3126(v){
+ const x=String(v||'').trim().toLowerCase().replaceAll(' ','_');
+ return ['planning','survey_open','booking','confirmed','completed','cancelled'].includes(x)?x:'planning';
+}
+async function saveTripV3121(){
+ const btn=document.getElementById('saveTripBtn'); if(btn){btn.disabled=true;btn.textContent='Saving…';}
+ try{
+  const tripNameV3123=valV3121('tripName');
+  const payload={
+   name:tripNameV3123,
+   title:tripNameV3123,
+   trip_type:valV3121('tripType')||'group_trip',
+   event_type:legacyEventTypeV3126(valV3121('tripType')),
+   destination:valV3121('tripDestination')||null,
+   start_date:valV3121('tripStart')||null,
+   end_date:valV3121('tripEnd')||null,
+   event_start_date:valV3121('tripStart')||null,
+   event_end_date:valV3121('tripEnd')||valV3121('tripStart')||null,
+   status:legacyStatusV3126(valV3121('tripStatus')),
+   transport_plan:valV3121('tripTransport')||null,
+   hotel_plan:valV3121('tripHotel')||null,
+   estimated_total_cost:valV3121('tripCost')?Number(valV3121('tripCost')):null,
+   currency:'CHF'
+  };
+  if(!payload.name) throw new Error('Trip name is required.');
+  if(!payload.start_date) throw new Error('Start date is required.');
+  const {data:{user}}=await sb.auth.getUser();
+  if(!user) throw new Error('Please sign in before creating a trip.');
+  payload.created_by=user.id;
+  const {data:event,error}=await sb.from('trip_events').insert(payload).select('*').single();
+  if(error) throw error;
+  const {data:link,error:le}=await sb.from('trip_survey_links').insert({trip_id:event.id,created_by:user.id}).select('*').single();
+  if(le) throw le;
+  tripCurrentV3121=event; tripSurveyTokenV3121=link.token;
+  const surveyBtn=document.getElementById('surveyBtn'); if(surveyBtn) surveyBtn.disabled=false;
+  alert('Trip saved. Participant survey is ready.');
+  renderTripsDashboardV313();
+  openTripSurveyManagerV3121();
+ }catch(e){alert('Trip save failed: '+e.message);}
+ finally{if(btn){btn.disabled=false;btn.textContent='Save trip';}}
+}
+
+function surveyUrlV3121(){
+ if(!tripSurveyTokenV3121)return '';
+ const u=new URL(location.href);u.search='';u.hash='trip-survey='+encodeURIComponent(tripSurveyTokenV3121);return u.toString();
+}
+function openTripSurveyManagerV3121(){
+ if(!tripSurveyTokenV3121){alert('Save the trip first.');return;}
+ document.getElementById('tripSurveyManagerTitle').textContent=tripCurrentV3121?.name||'Trip';
+ document.getElementById('tripSurveyUrlV3121').value=surveyUrlV3121();
+ document.getElementById('tripSurveyManagerV3121').classList.remove('hidden');
+}
+function closeTripSurveyManagerV3121(){document.getElementById('tripSurveyManagerV3121').classList.add('hidden');}
+async function copyTripSurveyV3121(){await navigator.clipboard.writeText(surveyUrlV3121());alert('Survey link copied.');}
+function shareTripSurveyWhatsAppV3121(){
+ const name=tripCurrentV3121?.name||'our trip';
+ const msg=`Hello,\n\nPlease let us know if you plan to join ${name} and complete the short participant survey here:\n${surveyUrlV3121()}\n\nThank you.\nGeneva Tagalog Group`;
+ location.href='https://wa.me/?text='+encodeURIComponent(msg);
+}
+function openParticipantSurveyV3121(){location.href=surveyUrlV3121();}
+
+async function loadPublicSurveyV3121(token){
+ tripSurveyTokenV3121=token;
+ document.getElementById('participantSurveyV3121').classList.remove('hidden');
+ try{
+  const {data,error}=await sb.rpc('trip_portal_event',{p_token:token});
+  if(error)throw error; const t=Array.isArray(data)?data[0]:data;
+  if(!t)throw new Error('This survey link is not available.');
+  tripCurrentV3121=t;
+  document.getElementById('psTripInfoV3121').textContent=[t.trip_name,t.destination,t.start_date&&t.end_date?`${t.start_date} → ${t.end_date}`:t.start_date].filter(Boolean).join(' · ');
+  const f=localStorage.getItem('geneva_tg_trip_first_name'),l=localStorage.getItem('geneva_tg_trip_last_name');
+  if(f)document.getElementById('psFirstV3121').value=f;if(l)document.getElementById('psLastV3121').value=l;
+ }catch(e){document.getElementById('psErrorV3121').textContent=e.message;}
+}
+function closeParticipantSurveyV3121(){document.getElementById('participantSurveyV3121').classList.add('hidden');history.replaceState(null,'',location.pathname+location.search);}
+function toggleSurveyFieldsV3121(){
+ const own=document.getElementById('psTransportV3121').value==='own_transport';
+ document.getElementById('psSeatsWrapV3121').style.display=own?'block':'none';
+ document.getElementById('psHotelDetailsV3121').classList.toggle('hidden',document.getElementById('psHotelV3121').value!=='yes');
+}
+async function submitParticipantSurveyV3121(){
+ const err=document.getElementById('psErrorV3121');err.textContent='';
+ try{
+  const first=valV3121('psFirstV3121'),last=valV3121('psLastV3121');if(!first||!last)throw new Error('First name and last name are required.');
+  const hv=document.getElementById('psHotelV3121').value;
+  const args={
+   p_token:tripSurveyTokenV3121,p_response_key:responseKeyV3121(),p_first_name:first,p_last_name:last,
+   p_adults:Number(valV3121('psAdultsV3121')||1),p_children:Number(valV3121('psChildrenV3121')||0),
+   p_attendance_status:valV3121('psAttendanceV3121'),p_transport_need:valV3121('psTransportV3121'),
+   p_seats_offered:Number(valV3121('psSeatsV3121')||0),p_hotel_needed:hv===''?null:hv==='yes',
+   p_rooms_needed:hv==='yes'?Number(valV3121('psRoomsV3121')||1):null,p_nights_needed:hv==='yes'?Number(valV3121('psNightsV3121')||1):null,
+   p_notes:valV3121('psNotesV3121')
+  };
+  const {error}=await sb.rpc('trip_portal_respond',args);if(error)throw error;
+  localStorage.setItem('geneva_tg_trip_first_name',first);localStorage.setItem('geneva_tg_trip_last_name',last);
+  document.getElementById('psWithdrawBtnV3121').classList.remove('hidden');
+  alert('Thank you. Your response has been saved.');
+ }catch(e){err.textContent=e.message;}
+}
+async function withdrawParticipantSurveyV3121(){
+ try{const {error}=await sb.rpc('trip_portal_withdraw',{p_token:tripSurveyTokenV3121,p_response_key:responseKeyV3121()});if(error)throw error;alert('Your response has been withdrawn.');}
+ catch(e){document.getElementById('psErrorV3121').textContent=e.message;}
+}
+window.addEventListener('load',()=>{
+ const m=location.hash.match(/^#trip-survey=(.+)$/);if(m)loadPublicSurveyV3121(decodeURIComponent(m[1]));
+ toggleSurveyFieldsV3121();
+});
+</script>
+
+<script>
+let tripGeoTimerV3122=null,tripGeoAbortV3122=null;
+const GENEVA_CENTER_V3122={lat:46.2044,lon:6.1432};
+function syncTripEndV3122(){const s=document.getElementById('tripStart'),e=document.getElementById('tripEnd');if(!s||!e||!s.value)return;e.min=s.value;if(!e.value||e.value<s.value)e.value=s.value;}
+function tripDurationV3122(seconds){const mins=Math.max(1,Math.round(Number(seconds||0)/60)),h=Math.floor(mins/60),m=mins%60;return h?(h+' h '+String(m).padStart(2,'0')):(m+' min');}
+async function searchTripDestinationV3122(){const input=document.getElementById('tripDestination'),box=document.getElementById('tripDestinationSuggestions'),info=document.getElementById('tripRouteInfo');if(!input||!box)return;const q=input.value.trim();clearTimeout(tripGeoTimerV3122);if(q.length<3){box.classList.add('hidden');box.innerHTML='';if(info)info.textContent='From central Geneva · type at least 3 letters.';return}if(info)info.textContent='Searching destination…';tripGeoTimerV3122=setTimeout(async()=>{try{if(tripGeoAbortV3122)tripGeoAbortV3122.abort();tripGeoAbortV3122=new AbortController();const res=await fetch('https://photon.komoot.io/api/?limit=6&lang=en&q='+encodeURIComponent(q),{signal:tripGeoAbortV3122.signal});if(!res.ok)throw new Error();const data=await res.json();const rows=(data.features||[]).filter(f=>f?.geometry?.coordinates?.length===2).map(f=>{const p=f.properties||{},city=p.city||p.name||p.county||p.state||'',country=p.country||'';return{label:[city,country].filter(Boolean).join(', '),lon:f.geometry.coordinates[0],lat:f.geometry.coordinates[1],detail:[p.state,p.country].filter(Boolean).join(' · ')}}).filter((x,i,a)=>x.label&&a.findIndex(y=>y.label===x.label)===i).slice(0,5);if(!rows.length){box.innerHTML='<div class="trip-suggestion muted">No destination found</div>';box.classList.remove('hidden');if(info)info.textContent='Try a city name or add the country.';return}box.innerHTML=rows.map((x,i)=>'<div class="trip-suggestion" data-i="'+i+'"><b>'+esc(x.label)+'</b>'+(x.detail?'<div class="fieldhint">'+esc(x.detail)+'</div>':'')+'</div>').join('');box.classList.remove('hidden');box.querySelectorAll('.trip-suggestion[data-i]').forEach(el=>el.onclick=()=>selectTripDestinationV3122(rows[Number(el.dataset.i)]));if(info)info.textContent='Select a destination to calculate distance from central Geneva.';}catch(e){if(e.name!=='AbortError'){box.classList.add('hidden');if(info)info.textContent='Destination suggestions are temporarily unavailable. You can still type the city manually.'}}},350);}
+async function selectTripDestinationV3122(x){const input=document.getElementById('tripDestination'),box=document.getElementById('tripDestinationSuggestions'),info=document.getElementById('tripRouteInfo');input.value=x.label;box.classList.add('hidden');if(info)info.textContent='Calculating road distance from central Geneva…';try{const u='https://router.project-osrm.org/route/v1/driving/'+GENEVA_CENTER_V3122.lon+','+GENEVA_CENTER_V3122.lat+';'+x.lon+','+x.lat+'?overview=false&alternatives=false&steps=false';const r=await fetch(u),d=await r.json(),route=d?.routes?.[0];if(!route)throw new Error();info.textContent='From central Geneva · approx. '+Math.round(route.distance/1000).toLocaleString('en-GB')+' km · '+tripDurationV3122(route.duration)+' by car';input.dataset.lat=x.lat;input.dataset.lon=x.lon;}catch(e){if(info)info.textContent='From central Geneva · road estimate unavailable. Destination can still be saved.'}}
+document.addEventListener('click',e=>{const box=document.getElementById('tripDestinationSuggestions'),input=document.getElementById('tripDestination');if(box&&input&&!box.contains(e.target)&&e.target!==input)box.classList.add('hidden')});
+window.addEventListener('load',()=>{const s=document.getElementById('tripStart');if(s)s.addEventListener('change',syncTripEndV3122)});
+</script>
+<script>
+/* V3.13 — live Trips management dashboard */
+function fmtTripDateV313(d){
+ if(!d)return '';
+ return new Date(d+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+}
+function tripResponseSummaryV313(rows){
+ const active=(rows||[]).filter(r=>r.status!=='withdrawn'&&r.attendance_status!=='not_attending');
+ return {
+  responses:active.length,
+  adults:active.reduce((a,r)=>a+Number(r.adults||0),0),
+  children:active.reduce((a,r)=>a+Number(r.children||0),0),
+  seatsNeeded:active.filter(r=>r.transport_need==='need_seat').reduce((a,r)=>a+Number(r.adults||0)+Number(r.children||0),0),
+  seatsOffered:active.reduce((a,r)=>a+Number(r.seats_offered||0),0),
+  hotelPeople:active.filter(r=>r.hotel_needed===true).reduce((a,r)=>a+Number(r.adults||0)+Number(r.children||0),0),
+  rooms:active.filter(r=>r.hotel_needed===true).reduce((a,r)=>a+Number(r.rooms_needed||0),0),
+  nights:active.filter(r=>r.hotel_needed===true).reduce((a,r)=>a+Number(r.nights_needed||0),0),
+  active
+ };
+}
+async function ensureSurveyLinkV313(tripId){
+ const {data,error}=await sb.from('trip_survey_links').select('token').eq('trip_id',tripId).eq('active',true).order('created_at',{ascending:false}).limit(1).maybeSingle();
+ if(error)throw error;
+ return data?.token||null;
+}
+async function openTripSurveyFromCardV313(tripId,name){
+ try{
+  const token=await ensureSurveyLinkV313(tripId);
+  if(!token)return alert('No active participant survey exists for this trip.');
+  tripCurrentV3121={id:tripId,name};tripSurveyTokenV3121=token;openTripSurveyManagerV3121();
+ }catch(e){alert('Survey link failed: '+e.message)}
+}
+
+function ceilV314(a,b){return a>0?Math.ceil(a/b):0}
+function moneyV315(n){return 'CHF '+Number(n||0).toLocaleString('en-CH',{maximumFractionDigits:0})}
+function tripTravelProfileV315(t){
+ const d=(t.destination||[t.city,t.country].filter(Boolean).join(', ')||'').toLowerCase();
+ if(d.includes('cameri')) return {key:'cameri',km:276,drive:'3h 12m',route:'Grand St Bernard',tollCar:51,tollVan:80,roadTolls:25,train:103,trainTime:'~6h 21m',flight:null,flightTime:'',coachKm:552};
+ if(d.includes('rome')||d.includes('roma')) return {key:'rome',km:876,drive:'~8h 47m',route:'Mont Blanc',tollCar:70,tollVan:94,roadTolls:75,train:89,trainTime:'from 8h 13m',flight:144,flightTime:'~1h 30m flight',coachKm:1752};
+ return {key:'other',km:0,drive:'Route estimate pending',route:'Select route',tollCar:0,tollVan:0,roadTolls:0,train:null,trainTime:'',flight:null,flightTime:'',coachKm:0};
+}
+function calcRoadV315(p,vehicles,consumption,fuel,tunnel,road){
+ const fuelCost=(p.km*2)*(consumption/100)*fuel;
+ return vehicles*(fuelCost+tunnel+road);
+}
+function updateTravelV315(id,key,vehicles,people){
+ const p=window._travelProfilesV315?.[id]; if(!p)return;
+ const cons=Number(document.getElementById(key+'Cons_'+id)?.value||0);
+ const fuel=Number(document.getElementById(key+'Fuel_'+id)?.value||0);
+ const tunnel=Number(document.getElementById(key+'Tunnel_'+id)?.value||0);
+ const road=Number(document.getElementById(key+'Road_'+id)?.value||0);
+ const total=calcRoadV315(p,vehicles,cons,fuel,tunnel,road);
+ const el=document.getElementById(key+'Price_'+id); if(el)el.textContent=moneyV315(total);
+ const pp=document.getElementById(key+'PP_'+id); if(pp)pp.textContent=people?moneyV315(total/people)+'/person':'— /person';
+}
+function travelCostEngineV315(t,sum){
+ const id=t.id,p=tripTravelProfileV315(t),people=Math.max(1,sum.adults+sum.children);
+ window._travelProfilesV315=window._travelProfilesV315||{};window._travelProfilesV315[id]=p;
+ const net=Math.max(0,sum.seatsNeeded-sum.seatsOffered), cars=ceilV314(net,4),vans=ceilV314(net,8),coaches=ceilV314(net,50);
+ const fuel=1.85;
+ const carTotal=calcRoadV315(p,cars,6.8,fuel,p.tollCar,p.roadTolls);
+ const vanTotal=calcRoadV315(p,vans,9.5,fuel,p.tollVan,p.roadTolls);
+ const coachEstimate=p.coachKm?Math.round(p.coachKm*6.84):0;
+ const trainTotal=p.train?people*p.train:0,flightTotal=p.flight?people*p.flight:0;
+ const dateLabel=(t.start_date||t.event_start_date||'')+' → '+(t.end_date||t.event_end_date||t.start_date||t.event_start_date||'');
+ return `<div class="travel-note"><b>Travel window:</b> event ${dateLabel}. Fare searches should cover ±1 day. Road figures below are planning estimates; rail/air prices are published starting fares until exact inventory is available.</div>
+ <div class="travel-grid">
+  <div class="travel-option"><div class="travel-head"><div><span class="travel-name">Car</span><span class="travel-source-badge">CALCULATED</span></div><div><div class="travel-price" id="carPrice_${id}">${moneyV315(carTotal)}</div><div class="travel-meta" id="carPP_${id}">${moneyV315(carTotal/people)}/person</div></div></div><div class="travel-meta">${cars} car(s) · ${p.km} km one way · ${p.drive} · via ${p.route}</div><div class="travel-fields"><label>Consumption L/100<input id="carCons_${id}" type="number" step=".1" value="6.8" oninput="updateTravelV315('${id}','car',${cars},${people})"></label><label>Fuel CHF/L<input id="carFuel_${id}" type="number" step=".01" value="${fuel}" oninput="updateTravelV315('${id}','car',${cars},${people})"></label><label>Tunnel return CHF<input id="carTunnel_${id}" type="number" step=".1" value="${p.tollCar}" oninput="updateTravelV315('${id}','car',${cars},${people})"></label><label>Other tolls CHF<input id="carRoad_${id}" type="number" step=".1" value="${p.roadTolls}" oninput="updateTravelV315('${id}','car',${cars},${people})"></label></div></div>
+  <div class="travel-option"><div class="travel-head"><div><span class="travel-name">Van</span><span class="travel-source-badge">CALCULATED</span></div><div><div class="travel-price" id="vanPrice_${id}">${moneyV315(vanTotal)}</div><div class="travel-meta" id="vanPP_${id}">${moneyV315(vanTotal/people)}/person</div></div></div><div class="travel-meta">${vans} van(s) · 8 passenger seats/van · via ${p.route}. Tunnel class depends on vehicle height.</div><div class="travel-fields"><label>Consumption L/100<input id="vanCons_${id}" type="number" step=".1" value="9.5" oninput="updateTravelV315('${id}','van',${vans},${people})"></label><label>Fuel CHF/L<input id="vanFuel_${id}" type="number" step=".01" value="${fuel}" oninput="updateTravelV315('${id}','van',${vans},${people})"></label><label>Tunnel return CHF<input id="vanTunnel_${id}" type="number" step=".1" value="${p.tollVan}" oninput="updateTravelV315('${id}','van',${vans},${people})"></label><label>Other tolls CHF<input id="vanRoad_${id}" type="number" step=".1" value="${p.roadTolls}" oninput="updateTravelV315('${id}','van',${vans},${people})"></label></div></div>
+  <div class="travel-option"><div class="travel-head"><div><span class="travel-name">Coach</span><span class="travel-source-badge">MARKET ESTIMATE</span></div><div><div class="travel-price">${coaches?moneyV315(coachEstimate*coaches):'—'}</div><div class="travel-meta">${coaches&&people?moneyV315(coachEstimate*coaches/people)+'/person':'Quote when needed'}</div></div></div><div class="travel-meta">${coaches} × 50-seat coach · provisional long-distance benchmark CHF 6.84/km equivalent. Replace with supplier quotes before booking.</div></div>
+  <div class="travel-option"><div class="travel-head"><div><span class="travel-name">Train</span><span class="travel-source-badge">PUBLISHED FARE</span></div><div><div class="travel-price">${p.train?'from '+moneyV315(p.train)+'/person':'Check fare'}</div><div class="travel-meta">${p.train?moneyV315(trainTotal)+' for '+people:'Exact fare pending'}</div></div></div><div class="travel-meta">${p.trainTime||'Schedule pending'} · exact dates ±1 day to be checked when inventory is open. Group fares may differ.</div></div>
+  <div class="travel-option"><div class="travel-head"><div><span class="travel-name">Flight</span><span class="travel-source-badge">${p.flight?'PUBLISHED FARE':'CHECK LATER'}</span></div><div><div class="travel-price">${p.flight?'from '+moneyV315(p.flight)+'/person':'—'}</div><div class="travel-meta">${p.flight?moneyV315(flightTotal)+' for '+people:'No useful baseline yet'}</div></div></div><div class="travel-meta">${p.flightTime||'Air option to be checked'} · baggage and airport transfers not included. Exact dates ±1 day should be compared.</div></div>
+ </div>`;
+}
+
+
+function setAllTripsV3142(collapse){
+ document.querySelectorAll('#tripPrototypeCards .trip-card').forEach(card=>{
+  card.classList.toggle('v3141-collapsed',collapse);
+  const btn=card.querySelector('.trip-collapse-btn');
+  if(btn){
+   btn.setAttribute('aria-expanded',String(!collapse));
+   const label=btn.querySelector('.collapse-label');
+   if(label)label.textContent=collapse?'Show details':'Collapse details';
+  }
+ });
+}
+function autoCollapseTripsV3142(){
+ if(window.matchMedia('(max-width:700px)').matches)setAllTripsV3142(true);
+}
+
+function toggleTripCardV3141(btn){
+ const card=btn.closest('.trip-card');
+ if(!card)return;
+ const collapsed=card.classList.toggle('v3141-collapsed');
+ btn.setAttribute('aria-expanded',String(!collapsed));
+ const label=btn.querySelector('.collapse-label');
+ if(label)label.textContent=collapsed?'Show details':'Collapse details';
+}
+
+async function renderTripsDashboardV313(){
+ const box=document.getElementById('tripPrototypeCards');if(!box)return;
+ box.innerHTML='<div class="card"><div class="muted">Loading trips and participant responses…</div></div>';
+ try{
+  const {data:trips,error}=await sb.from('trip_events').select('*').order('start_date',{ascending:true});
+  if(error)throw error;
+  const ids=(trips||[]).map(t=>t.id);
+  let responses=[];
+  if(ids.length){
+   const rr=await sb.from('trip_participant_responses').select('*').in('trip_id',ids).order('created_at',{ascending:true});
+   if(rr.error)throw rr.error;responses=rr.data||[];
+  }
+  const today=new Date().toISOString().slice(0,10);
+  const upcoming=(trips||[]).filter(t=>(t.start_date||t.event_start_date||'9999-12-31')>=today&&t.status!=='completed'&&t.status!=='cancelled');
+  document.getElementById('tripMetricUpcoming').textContent=upcoming.length;
+  document.getElementById('tripMetricResponses').textContent=responses.filter(r=>r.status!=='withdrawn').length;
+  if(!(trips||[]).length){box.innerHTML='<div class="card"><b>No trips yet.</b><div class="muted">Create the first trip to start planning.</div></div>';return}
+  box.innerHTML=(trips||[]).map(t=>{
+   const rs=responses.filter(r=>r.trip_id===t.id),sum=tripResponseSummaryV313(rs);
+   const name=t.name||t.title||'Trip',dest=t.destination||[t.city,t.country].filter(Boolean).join(', ')||'Destination to decide';
+   const sd=t.start_date||t.event_start_date,ed=t.end_date||t.event_end_date||sd;
+   const people=sum.adults+sum.children;
+   const plist=sum.active.length?`<div class="trip-people"><b>Participants</b>${sum.active.map(r=>`<div class="trip-person"><b>${esc(r.first_name)} ${esc(r.last_name)}</b>${Number(r.adults||0)} adult${Number(r.adults||0)===1?'':'s'} · ${Number(r.children||0)} child${Number(r.children||0)===1?'':'ren'} · ${esc((r.attendance_status||'interested').replaceAll('_',' '))}<br><span class="muted">${r.transport_need==='need_seat'?'Needs transport':r.transport_need==='own_transport'?'Own transport'+(r.seats_offered?' · '+r.seats_offered+' seat(s) offered':''):'Transport to decide'} · ${r.hotel_needed===true?'Hotel: '+Number(r.rooms_needed||0)+' room(s), '+Number(r.nights_needed||0)+' night(s)':r.hotel_needed===false?'No hotel':'Hotel to decide'}</span></div>`).join('')}</div>`:'<div class="muted" style="margin-top:10px">No participant responses yet.</div>';
+   return `<div class="trip-card">
+    <div class="trip-title">${esc(name)}</div>
+    <div class="muted">${esc(fmtTripDateV313(sd))}${ed&&ed!==sd?' → '+esc(fmtTripDateV313(ed)):''} · ${esc(dest)}</div>
+    <div class="trip-chips"><span class="status-chip">${esc((t.status||'planning').replaceAll('_',' '))}</span><span class="status-chip">${sum.responses} response${sum.responses===1?'':'s'}</span></div><div class="trip-quickline">${people} people · ${sum.seatsNeeded} seat${sum.seatsNeeded===1?'':'s'} needed · ${sum.hotelPeople} hotel</div>
+    <div class="trip-summary-grid">
+     <div class="trip-summary-box"><div class="k">People</div><div class="v">${people}</div><div class="k">${sum.adults} adults · ${sum.children} children</div></div>
+     <div class="trip-summary-box"><div class="k">Need seats</div><div class="v">${sum.seatsNeeded}</div><div class="k">${sum.seatsOffered} offered</div></div>
+     <div class="trip-summary-box"><div class="k">Hotel people</div><div class="v">${sum.hotelPeople}</div><div class="k">${sum.rooms} rooms</div></div>
+     <div class="trip-summary-box"><div class="k">Hotel nights</div><div class="v">${sum.nights}</div><div class="k">declared nights</div></div>
+    </div>
+    <button type="button" class="trip-collapse-btn" onclick="toggleTripCardV3141(this)" aria-expanded="true"><span class="chev">⌄</span><span class="collapse-label">Collapse details</span></button>
+    <div class="v3141-collapsible">
+    <div class="transport-panel">
+      <h4>Transport planning</h4>
+      <div class="muted">Current survey demand: ${sum.seatsNeeded} seat(s) needed · ${sum.seatsOffered} seat(s) offered</div>
+      ${travelCostEngineV315(t,sum)}
+    </div>
+    ${plist}
+    <div class="trip-actions"><button class="secondary" onclick="openTripSurveyFromCardV313('${t.id}',${JSON.stringify(name).replaceAll('"','&quot;')})">Participant survey</button></div>
+    </div>
+   </div>`;
+  }).join('');
+  setTimeout(autoCollapseTripsV3142,0);
+ }catch(e){box.innerHTML='<div class="card"><b>Trips dashboard could not load.</b><div class="muted">'+esc(e.message)+'</div></div>'}
+}
+document.addEventListener('click',e=>{
+ const b=e.target.closest('button[data-page]');
+ if(b?.dataset.page==='trips')setTimeout(renderTripsDashboardV313,50);
+});
+window.addEventListener('load',()=>setTimeout(()=>{if(document.getElementById('trips')?.classList.contains('active'))renderTripsDashboardV313()},400));
+</script>
+</body></html>
