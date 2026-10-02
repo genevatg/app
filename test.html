@@ -85,7 +85,7 @@ nav{position:fixed;z-index:6;bottom:0;left:0;right:0;padding:8px 10px calc(8px +
 
 .response-action-v3271{margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.response-action-v3271 select{flex:1;min-width:150px;padding:9px;border:1px solid #cfdbe5;border-radius:10px;background:#fff}.response-action-v3271 button{padding:9px 12px;border:0;border-radius:10px;background:#164b78;color:#fff;font-weight:800}.response-action-v3271 button.secondary{background:#eef5fa;color:#164b78}.planning-response-v3271{display:inline-flex;margin-top:7px;padding:5px 9px;border-radius:999px;background:#fff2cc;color:#8a5a00;font-size:11px;font-weight:800}.planning-response-v3271.accepted{background:#e4f4e9;color:#237044}
 
-/* V3.28.1 — Module consolidation */
+/* V3.28.2 — Module consolidation */
 .hosp-volunteer-v3281{margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:18px;overflow:hidden}
 .hosp-volunteer-v3281>summary{list-style:none;cursor:pointer;padding:15px 16px;display:flex;justify-content:space-between;align-items:center;gap:10px;font-weight:800;color:var(--navy)}
 .hosp-volunteer-v3281>summary::-webkit-details-marker{display:none}
@@ -549,7 +549,7 @@ body.public-survey-active #participantSurveyV3121 .modalbox{width:min(560px,100%
 <div class="card"><b>Your name</b><div class="guestname"><input id="gFirst" class="field" autocomplete="given-name" placeholder="First name"><input id="gLast" class="field" autocomplete="family-name" placeholder="Last name"></div><div class="fieldhint">Enter your name before offering help. It is stored on this device only for convenience.</div></div>
 <h2>Current needs</h2><div id="guestNeeds"></div><div id="guestMsg" class="guestmsg muted"></div></div></section>
 <div id="app" class="hidden">
-<header><div class="headrow"><div class="brand"><b>Geneva TG Coordination</b><span>Shared coordination workspace · V3.28.1 Module Consolidation</span></div><div id="userChip" class="userchip"></div></div></header>
+<header><div class="headrow"><div class="brand"><b>Geneva TG Coordination</b><span>Shared coordination workspace · V3.28.2 Special Event Location & Trip Sync</span></div><div id="userChip" class="userchip"></div></div></header>
 <main>
 <section id="dashboard" class="page active"><div class="hero"><div><h1>Dashboard</h1><p class="muted">What needs your attention?</p></div><button class="refresh" onclick="loadAll()">↻ Refresh</button></div><div class="grid"><div class="card metric red"><div class="t">Speaker Needed</div><div id="mNeed" class="n">—</div></div><div class="card metric orange"><div class="t">Talk Details Missing</div><div id="mMissing" class="n">—</div></div><div class="card metric green"><div class="t">Confirmed</div><div id="mConfirmed" class="n">—</div></div><div class="card metric purple"><div class="t">Special Events</div><div id="mSpecial" class="n">—</div></div></div><h2>Upcoming public talks</h2><div id="upcoming" class="talklist"></div></section>
 <section id="talks" class="page"><div class="hero"><div><h1>Public Talks</h1><p class="muted">Planning, speaker details and talk history</p></div><button class="refresh" onclick="loadAll()">↻ Refresh</button></div><div class="pt-tools-v3242 pt-hub-v3243">
@@ -611,7 +611,17 @@ body.public-survey-active #participantSurveyV3121 .modalbox{width:min(560px,100%
 <div><label>Special event</label><select id="eSpecialTypeV3247" class="field" onchange="specialEventCascadeV3247()">
 <option value="">Select event type</option><option value="circuit_assembly">Circuit Assembly</option><option value="regional_convention">Regional Convention</option><option value="international_convention">International Convention</option><option value="world_headquarters_visit">World Headquarters Visit</option><option value="special_week">Special Week</option></select></div>
 <div id="circuitRepWrapV3247" class="hidden"><label>Assembly</label><select id="eCircuitRepV3247" class="field" onchange="specialEventCascadeV3247()"><option value="">Select</option><option value="branch_representative">Branch Representative</option><option value="circuit_overseer">Circuit Overseer</option></select></div>
-<div id="specialLanguageWrapV3247" class="hidden"><label>Language</label><select id="eSpecialLanguageV3247" class="field" onchange="specialEventCascadeV3247()"><option value="">Select</option><option value="tagalog">Tagalog</option><option value="english">English</option></select></div><div id="specialOverseerWrapV3248" class="hidden"><label>Circuit Overseer <span class="optional-v3248">Optional</span></label><input id="eSpecialOverseerV3248" class="field" placeholder="First name / Last name"><small class="fieldhint">Used as the Hospitality contact name. If blank, Hospitality shows the Special Week label.</small><label class="special-phone-label-v3252">Mobile / WhatsApp <span class="optional-v3248">Optional</span></label><input id="eSpecialPhoneV3252" class="field" type="tel" placeholder="+41 …"><small class="fieldhint">Shared with Hospitality for coordination.</small></div><div id="specialDatesWrapV3249" class="special-dates-v3249">
+<div id="specialLanguageWrapV3247" class="hidden"><label>Language</label><select id="eSpecialLanguageV3247" class="field" onchange="specialEventCascadeV3247()"><option value="">Select</option><option value="tagalog">Tagalog</option><option value="english">English</option></select></div>
+<div id="specialLocationWrapV3282" class="wide">
+  <label>Event location</label>
+  <div class="formgrid" style="margin-top:6px">
+    <div><label>City <span style="color:#b4232f">*</span></label><input id="eSpecialCityV3282" class="field" placeholder="e.g. Cameri"></div>
+    <div><label>Country <span style="color:#b4232f">*</span></label><input id="eSpecialCountryV3282" class="field" placeholder="e.g. Italy"></div>
+    <div><label>Venue / Assembly Hall <span class="optional-v3248">Optional</span></label><input id="eSpecialVenueV3282" class="field" placeholder="Venue name"></div>
+    <div><label>Address <span class="optional-v3248">Optional</span></label><input id="eSpecialAddressV3282" class="field" placeholder="Street / address"></div>
+  </div>
+  <small class="fieldhint">City and country are required when a related Trip is created.</small>
+</div><div id="specialOverseerWrapV3248" class="hidden"><label>Circuit Overseer <span class="optional-v3248">Optional</span></label><input id="eSpecialOverseerV3248" class="field" placeholder="First name / Last name"><small class="fieldhint">Used as the Hospitality contact name. If blank, Hospitality shows the Special Week label.</small><label class="special-phone-label-v3252">Mobile / WhatsApp <span class="optional-v3248">Optional</span></label><input id="eSpecialPhoneV3252" class="field" type="tel" placeholder="+41 …"><small class="fieldhint">Shared with Hospitality for coordination.</small></div><div id="specialDatesWrapV3249" class="special-dates-v3249">
 <div><label>Start date</label><input id="eSpecialStartV3249" type="date" class="field" onchange="specialWeekDatesV3249('start')"></div>
 <div><label>End date</label><input id="eSpecialEndV3249" type="date" class="field" onchange="specialWeekDatesV3249('end')"></div>
 <small id="specialDateHintV3249" class="fieldhint">Special Week normally runs Tuesday to Sunday. Monday can be selected when needed.</small>
@@ -725,7 +735,7 @@ async function start(){
  return;
 }profile=data;$('auth').classList.add('hidden');$('app').classList.remove('hidden');$('userChip').textContent=(profile.full_name||profile.email)+' · '+profile.role.replaceAll('_',' ');$('accountInfo').innerHTML='<b>'+esc(profile.full_name||'')+'</b><br>'+esc(profile.email)+'<br><span class="muted">Role: '+esc(profile.role.replaceAll('_',' '))+'</span>';{
  const modules=profile.role==='admin'?'Dashboard · Public Talks · Hospitality · Trips · Account':profile.role==='hospitality_coordinator'?'Dashboard · Hospitality · Account':profile.role==='trip_coordinator'?'Dashboard · Trips · Account':'Dashboard · Hospitality · Account';
- $('buildDiagnostic').innerHTML='<b>App V3.28.1</b><br><b>Signed in as:</b> '+esc(profile.full_name||profile.email)+'<br><b>Email:</b> '+esc(profile.email||'—')+'<br><b>Role:</b> '+esc(profile.role.replaceAll('_',' '))+'<br><b>Access:</b> '+esc(modules)+'<br><b>Data:</b> Supabase · '+esc(SUPABASE_URL.replace('https://',''));
+ $('buildDiagnostic').innerHTML='<b>App V3.28.2</b><br><b>Signed in as:</b> '+esc(profile.full_name||profile.email)+'<br><b>Email:</b> '+esc(profile.email||'—')+'<br><b>Role:</b> '+esc(profile.role.replaceAll('_',' '))+'<br><b>Access:</b> '+esc(modules)+'<br><b>Data:</b> Supabase · '+esc(SUPABASE_URL.replace('https://',''));
 }buildNav();if(canVolunteer()){const pr=await sb.from('profiles').select('id,full_name,email,role,active').eq('active',true);publisherProfiles=pr.error?[]:(pr.data||[])}if(canHosp())await loadVolunteerPortalUrl();await loadAll()}
 function buildNav(){let items=[['dashboard','Dashboard']];if(canTalks())items.push(['talks','Public Talks']);if(canHosp()||canVolunteer())items.push(['hospitality','Hospitality']);if(canTrips())items.push(['trips','Trips']);items.push(['account','Account']);$('nav').innerHTML=items.map((x,i)=>`<button class="${i===0?'active':''}" data-page="${x[0]}">${x[1]}</button>`).join('');$('nav').querySelectorAll('button').forEach(b=>b.onclick=()=>showPage(b.dataset.page,b))}
 function showPage(id,btn){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));$(id).classList.add('active');document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));if(id==='hospitality'){if(canHosp())loadHospitality();if(canVolunteer())loadVolunteerBoard()}}
@@ -1169,6 +1179,10 @@ function specialEventCascadeV3247(){
  $('specialOverseerWrapV3248')?.classList.toggle('hidden',type!=='special_week');
  $('specialDatesWrapV3249')?.classList.toggle('hidden',type!=='special_week');
  if(type==='special_week'&&!$('eSpecialStartV3249')?.value&&$('eDate')?.value){$('eSpecialStartV3249').value=$('eDate').value;$('eSpecialEndV3249').value=addDaysV3249($('eDate').value,5)}
+ if(type==='special_week'){
+  if($('eSpecialCityV3282')&&!$('eSpecialCityV3282').value)$('eSpecialCityV3282').value='Geneva';
+  if($('eSpecialCountryV3282')&&!$('eSpecialCountryV3282').value)$('eSpecialCountryV3282').value='Switzerland';
+ }
  if(type!=='circuit_assembly'&&$('eCircuitRepV3247'))$('eCircuitRepV3247').value='';
  if(!needsLang&&$('eSpecialLanguageV3247'))$('eSpecialLanguageV3247').value='';
  if($('eEvent'))$('eEvent').value=specialEventTitleV3247();
@@ -1221,6 +1235,10 @@ function openTalk(id){
  if(t.admin_status==='special_event')parseSpecialEventV3247(t.event_title||'');
  if($('eSpecialOverseerV3248'))$('eSpecialOverseerV3248').value=t.special_event_contact_name||'';
 if($('eSpecialPhoneV3252'))$('eSpecialPhoneV3252').value=t.special_event_contact_phone||'';
+if($('eSpecialCityV3282'))$('eSpecialCityV3282').value=t.special_event_city||'';
+if($('eSpecialCountryV3282'))$('eSpecialCountryV3282').value=t.special_event_country||'';
+if($('eSpecialVenueV3282'))$('eSpecialVenueV3282').value=t.special_event_venue||'';
+if($('eSpecialAddressV3282'))$('eSpecialAddressV3282').value=t.special_event_address||'';
  if($('eSpecialStartV3249'))$('eSpecialStartV3249').value=t.special_event_start_date||t.talk_date||'';
  if($('eSpecialEndV3249'))$('eSpecialEndV3249').value=t.special_event_end_date||((t.admin_status==='special_event'&&String(t.event_title||'').toLowerCase().includes('special week'))?addDaysV3249(t.talk_date,5):'');
  updateEventCoordinationV3244();
@@ -1261,13 +1279,13 @@ async function loadEventLinksV3246(talkId){
  if($('eCreateHospV3244'))$('eCreateHospV3244').checked=false;
  try{
   const [tr,tk,hc,hv]=await Promise.all([
-   sb.from('trip_events').select('id,title,status').eq('source_public_talk_id',talkId).maybeSingle(),
+   sb.from('trip_events').select('id,title,status,destination,city,country,venue_name').eq('source_public_talk_id',talkId).maybeSingle(),
    sb.from('coordination_tasks').select('id,title,status,to_module').eq('public_talk_id',talkId).neq('status','completed'),
    sb.from('hospitality_cases').select('id,status').eq('public_talk_id',talkId).maybeSingle(),
    sb.from('hospitality_visit_details').select('id').eq('public_talk_id',talkId).maybeSingle()
   ]);
   let h='';
-  if(tr.data)h+=`<div class="linked-v3246">🚌 <b>Trip linked</b> · ${esc(tr.data.status||'planning')} <button onclick="closeModal();showPage('trips')">Open Trips</button></div>`;
+  if(tr.data){const dest=tr.data.destination||[tr.data.city,tr.data.country].filter(Boolean).join(', ');h+=`<div class="linked-v3246">🚌 <b>Trip linked</b> · ${esc(tr.data.status||'planning')}<br><span class="${dest?'':'error'}">${dest?'Destination: '+esc(dest):'⚠️ Destination: Missing — add location above'}</span> <button onclick="closeModal();showPage('trips')">Open Trips</button></div>`;}
   const hs=(tk.data||[]).filter(x=>x.to_module==='hospitality');
   if(hv.data||hc.data)h+=`<div class="linked-v3246">🏠 <b>Hospitality linked</b> · ${esc(hc.data.status||'open')} <button onclick="closeModal();showPage('hospitality')">Open Hospitality</button></div>`;
   else if(hs.length)h+=`<div class="linked-v3246">🏠 <b>Hospitality requested</b> · ${hs.length} open task${hs.length>1?'s':''}</div>`;
@@ -1279,16 +1297,27 @@ async function loadEventLinksV3246(talkId){
 async function syncEventCoordinationV3246(talkId,title,date){
  if(!title)return;
  const hospitalityDate=($('eSpecialTypeV3247')?.value==='special_week'&&$('eSpecialStartV3249')?.value)?$('eSpecialStartV3249').value:date;
+ const eventCity=$('eSpecialCityV3282')?.value.trim()||'';
+ const eventCountry=$('eSpecialCountryV3282')?.value.trim()||'';
+ const eventVenue=$('eSpecialVenueV3282')?.value.trim()||'';
+ const eventAddress=$('eSpecialAddressV3282')?.value.trim()||'';
+ if($('eCreateTripV3244')?.checked&&(!eventCity||!eventCountry))throw new Error('City and country are required to create a Trip.');
  if($('eCreateTripV3244')?.checked){
   const ex=await sb.from('trip_events').select('*').eq('source_public_talk_id',talkId).maybeSingle();
   if(ex.error && ex.error.code!=='PGRST116')throw ex.error;
   if(!ex.data){
    const {data:{user}}=await sb.auth.getUser();
-   const payload={name:title,title,event_type:eventTypeV3246(title),trip_type:'group_trip',start_date:date,end_date:date,event_start_date:date,event_end_date:date,status:'planning',currency:'CHF',source_public_talk_id:talkId,source_snapshot_title:title,source_snapshot_date:date,road_route:'mont_blanc',created_by:user?.id||null,updated_by:user?.id||null,notes:'Created from Public Talk / Event schedule.'};
+   const payload={name:title,title,event_type:eventTypeV3246(title),trip_type:'group_trip',destination:[eventCity,eventCountry].filter(Boolean).join(', '),city:eventCity||null,country:eventCountry||null,venue_name:eventVenue||null,start_date:date,end_date:date,event_start_date:date,event_end_date:date,status:'planning',currency:'CHF',source_public_talk_id:talkId,source_snapshot_title:title,source_snapshot_date:date,road_route:'mont_blanc',created_by:user?.id||null,updated_by:user?.id||null,notes:['Created from Public Talk / Event schedule.',eventAddress?('Event address: '+eventAddress):''].filter(Boolean).join(' ')};
    const r=await sb.from('trip_events').insert(payload);if(r.error)throw new Error('Trip creation failed: '+r.error.message);
-  }else if(ex.data.source_snapshot_title!==title||ex.data.source_snapshot_date!==date){
+  }else{
+   if(ex.data.status==='planning'){
+    const tripUpdate={destination:[eventCity,eventCountry].filter(Boolean).join(', '),city:eventCity||null,country:eventCountry||null,venue_name:eventVenue||null,updated_at:new Date().toISOString()};
+    const ur=await sb.from('trip_events').update(tripUpdate).eq('id',ex.data.id);if(ur.error)throw new Error('Trip location sync failed: '+ur.error.message);
+   }
+   if(ex.data.source_snapshot_title!==title||ex.data.source_snapshot_date!==date){
    const existing=await sb.from('coordination_tasks').select('id').eq('public_talk_id',talkId).eq('trip_id',ex.data.id).eq('task_type','source_event_changed').neq('status','completed').limit(1);
    if(!(existing.data||[]).length)await sb.from('coordination_tasks').insert({title:'Review updated source event',task_type:'source_event_changed',from_module:'public_talks',to_module:'trips',public_talk_id:talkId,trip_id:ex.data.id,priority:'high',status:'open',notes:`Public Talks changed the source event to "${title}" on ${date}. Review the linked Trip before updating operational arrangements.`});
+   }
   }
  }
  if($('eCreateHospV3244')?.checked){
@@ -1346,6 +1375,11 @@ async function validateSpecialEventV3247(){
   if(![0,1].includes(weekdayV3249(en))){alert('A Special Week should end on Sunday, or Monday when needed.');return false}
   if(en<st){alert('The end date cannot be before the start date.');return false}
  }
+ if($('eCreateTripV3244')?.checked){
+  if(!$('eSpecialCityV3282')?.value.trim()||!$('eSpecialCountryV3282')?.value.trim()){
+   alert('City and country are required to create a Trip.');return false;
+  }
+ }
  $('eEvent').value=specialEventTitleV3247();return true;
 }
 async function saveTalk(){
@@ -1374,7 +1408,7 @@ async function saveTalk(){
    if(mismatch.length)throw new Error('Speaker save verification failed for: '+mismatch.join(', '));
    msg.textContent='Speaker saved. Saving Public Talk…';
   }
-  const payload={speaker_id:speakerId,talk_number:$('eTalk').value?Number($('eTalk').value):null,song_number:$('eSong').value?Number($('eSong').value):null,delivery_method:delivery,total_persons:delivery==='in_person'?persons:null,final_prayer_mode:prayerMode,final_prayer_brother_id:prayerBrother,admin_status:status,event_title:status==='special_event'?($('eEvent').value.trim()||null):null,special_event_contact_name:(status==='special_event'&&$('eSpecialTypeV3247')?.value==='special_week'?($('eSpecialOverseerV3248')?.value.trim()||null):null),special_event_contact_phone:(status==='special_event'&&$('eSpecialTypeV3247')?.value==='special_week'?($('eSpecialPhoneV3252')?.value.trim()||null):null),special_event_start_date:(status==='special_event'&&$('eSpecialTypeV3247')?.value==='special_week'?($('eSpecialStartV3249')?.value||null):null),special_event_end_date:(status==='special_event'&&$('eSpecialTypeV3247')?.value==='special_week'?($('eSpecialEndV3249')?.value||null):null),admin_comments:$('eComments').value.trim()||null,updated_by:profile.id,updated_at:new Date().toISOString()};
+  const payload={speaker_id:speakerId,talk_number:$('eTalk').value?Number($('eTalk').value):null,song_number:$('eSong').value?Number($('eSong').value):null,delivery_method:delivery,total_persons:delivery==='in_person'?persons:null,final_prayer_mode:prayerMode,final_prayer_brother_id:prayerBrother,admin_status:status,event_title:status==='special_event'?($('eEvent').value.trim()||null):null,special_event_contact_name:(status==='special_event'&&$('eSpecialTypeV3247')?.value==='special_week'?($('eSpecialOverseerV3248')?.value.trim()||null):null),special_event_contact_phone:(status==='special_event'?($('eSpecialPhoneV3252')?.value.trim()||null):null),special_event_city:(status==='special_event'?($('eSpecialCityV3282')?.value.trim()||null):null),special_event_country:(status==='special_event'?($('eSpecialCountryV3282')?.value.trim()||null):null),special_event_venue:(status==='special_event'?($('eSpecialVenueV3282')?.value.trim()||null):null),special_event_address:(status==='special_event'?($('eSpecialAddressV3282')?.value.trim()||null):null),special_event_start_date:(status==='special_event'&&$('eSpecialTypeV3247')?.value==='special_week'?($('eSpecialStartV3249')?.value||null):null),special_event_end_date:(status==='special_event'&&$('eSpecialTypeV3247')?.value==='special_week'?($('eSpecialEndV3249')?.value||null):null),admin_comments:$('eComments').value.trim()||null,updated_by:profile.id,updated_at:new Date().toISOString()};
   const tr=await sb.from('public_talks').update(payload).eq('id',id).select('id,speaker_id,admin_status,total_persons').maybeSingle();
   if(tr.error)throw new Error('Public Talk save failed: '+tr.error.message);
   if(!tr.data?.id)throw new Error('Public Talk save returned no row. Your session may not have update permission.');
