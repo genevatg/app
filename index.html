@@ -1375,6 +1375,8 @@ if($('eSpecialAddressV3282'))$('eSpecialAddressV3282').value=t.special_event_add
  $('eRegion').value=sp?.state_region||'';
  $('eCountry').value=sp?.country||'';
  $('eTimezone').value=sp?.timezone||'';
+ $('eSpeakerEmail').value=sp?.email||'';
+ $('eSpeakerPhone').value=sp?.phone||'';
  try{updateDeliveryFields()}catch(e){console.warn('delivery preview',e)}
  try{updateSpeakerInfo()}catch(e){console.warn('speaker preview',e)}
  try{updateTalkInfo()}catch(e){console.warn('talk history preview',e)}
