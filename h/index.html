@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>Geneva TG — Hospitality</title>
+<meta name="description" content="Offer your help for an upcoming visit to the Geneva Tagalog Group.">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Geneva Tagalog Group">
+<meta property="og:title" content="Geneva TG — Hospitality">
+<meta property="og:description" content="Offer your help for an upcoming visit to the Geneva Tagalog Group.">
+<meta property="og:image" content="https://genevatg.github.io/app/whatsapp-preview.png">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+
+<body>
+<p>Opening Geneva Tagalog Group…</p>
+
+<script>
+(function () {
+  const raw = location.search.slice(1);
+  const p = new URLSearchParams(location.search);
+
+  const token =
+    p.get('token') ||
+    p.get('volunteer') ||
+    ((raw && !raw.includes('=')) ? decodeURIComponent(raw) : '');
+
+  if (!token) {
+    document.body.innerHTML = '<p>This link is incomplete.</p>';
+    return;
+  }
+
+  location.replace('../?volunteer=' + encodeURIComponent(token));
+})();
+</script>
+</body>
+</html>
