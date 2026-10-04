@@ -1031,6 +1031,28 @@ function fullPhoneV3241(){
  const dial=$('sdDialV3241').textContent||'';
  return (dial==='+'?'':dial)+raw.replace(/^0+/,'').replace(/\s+/g,'');
 }
+function addSpeakerDirectoryV330(){
+ const temp={
+  id:'__new__',
+  full_name:'',
+  congregation:'',
+  city:'',
+  state_region:'',
+  country:'',
+  timezone:'',
+  email:'',
+  phone:'',
+  available_talks:[]
+ };
+ speakers.push(temp);
+ editSpeakerDirectoryV3241('__new__');
+ speakers=speakers.filter(x=>x.id!=='__new__');
+
+ $('sdIdV3241').value='';
+ $('sdTitleV3241').textContent='New Speaker';
+ $('sdEmailBtnV3241').disabled=true;
+ $('sdWaBtnV3241').disabled=true;
+}
 function editSpeakerDirectoryV3241(id){
  const sp=speakers.find(x=>String(x.id)===String(id)); if(!sp)return;
  let box=document.getElementById('speakerDirectoryEditorV3241');
@@ -1073,12 +1095,60 @@ function editSpeakerDirectoryV3241(id){
 function closeSpeakerDirectoryEditorV3241(){document.getElementById('speakerDirectoryEditorV3241')?.classList.remove('open')}
 async function saveSpeakerDirectoryV3241(){
  const id=$('sdIdV3241').value;
- const talkNums=String($('sdTalksV3254')?.value||'').split(/[,;\s]+/).map(x=>Number(x)).filter(x=>Number.isInteger(x)&&x>0&&x<=300); const payload={full_name:$('sdNameV3241').value.trim(),congregation:$('sdCongV3241').value.trim()||null,city:$('sdCityV3241').value.trim()||null,state_region:$('sdRegionV3241').value.trim()||null,country:$('sdCountryV3241').value.trim()||null,timezone:$('sdTimezoneV3241').value.trim()||null,email:$('sdEmailV3241').value.trim()||null,phone:fullPhoneV3241(),available_talks:[...new Set(talkNums)].sort((a,b)=>a-b)};
- if(!payload.full_name){alert('Speaker name is required.');return}
- const {data,error}=await sb.from('speakers').update(payload).eq('id',id).select('id,full_name,congregation,city,state_region,country,timezone,email,phone,available_talks').single();
- if(error){alert('Unable to save speaker: '+error.message);return}
- const i=speakers.findIndex(x=>String(x.id)===String(id)); if(i>=0)speakers[i]={...speakers[i],...data};
- fillSpeakers();closeSpeakerDirectoryEditorV3241();
+
+ const talkNums=String($('sdTalksV3254')?.value||'')
+  .split(/[,;\s]+/)
+  .map(x=>Number(x))
+  .filter(x=>Number.isInteger(x)&&x>0&&x<=300);
+
+ const payload={
+  full_name:$('sdNameV3241').value.trim(),
+  congregation:$('sdCongV3241').value.trim()||null,
+  city:$('sdCityV3241').value.trim()||null,
+  state_region:$('sdRegionV3241').value.trim()||null,
+  country:$('sdCountryV3241').value.trim()||null,
+  timezone:$('sdTimezoneV3241').value.trim()||null,
+  email:$('sdEmailV3241').value.trim()||null,
+  phone:fullPhoneV3241(),
+  available_talks:[...new Set(talkNums)].sort((a,b)=>a-b)
+ };
+
+ if(!payload.full_name){
+  alert('Speaker name is required.');
+  return;
+ }
+
+ let data,error;
+
+ if(id){
+  ({data,error}=await sb
+   .from('speakers')
+   .update(payload)
+   .eq('id',id)
+   .select('id,full_name,congregation,city,state_region,country,timezone,email,phone,available_talks')
+   .single());
+ }else{
+  ({data,error}=await sb
+   .from('speakers')
+   .insert({...payload,active:true})
+   .select('id,full_name,congregation,city,state_region,country,timezone,email,phone,available_talks')
+   .single());
+ }
+
+ if(error){
+  alert('Unable to save speaker: '+error.message);
+  return;
+ }
+
+ if(id){
+  const i=speakers.findIndex(x=>String(x.id)===String(id));
+  if(i>=0)speakers[i]={...speakers[i],...data};
+ }else{
+  speakers.push(data);
+ }
+
+ fillSpeakers();
+ closeSpeakerDirectoryEditorV3241();
 }
 function contactSpeakerFromDirectoryV326(){const id=$('sdIdV3241').value;closeSpeakerDirectoryEditorV3241();openSpeakerSearchV326();setTimeout(()=>{document.querySelectorAll('.ssSpeakerV326').forEach(x=>x.checked=String(x.value)===String(id))},0)}
 function speakerDirectoryEmailV3241(){const v=$('sdEmailV3241').value.trim();if(v)location.href='mailto:'+encodeURIComponent(v)}
