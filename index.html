@@ -770,7 +770,134 @@ function saveGuestName(){const n=guestName();localStorage.setItem('genevaTGGuest
 function loadGuestName(){try{const n=JSON.parse(localStorage.getItem('genevaTGGuestName')||'{}');$('gFirst').value=n.first_name||'';$('gLast').value=n.last_name||''}catch(e){}}
 function guestNeedLabel(n){return String(n.need_title||n.need_type||'Volunteer need').replaceAll('_',' ')}
 async function startGuest(){ $('auth').classList.add('hidden');$('app').classList.add('hidden');$('guestPortal').classList.remove('hidden');loadGuestName();await loadGuestNeeds()}
-async function loadGuestNeeds(){const box=$('guestNeeds');box.innerHTML='<div class="card muted">Loading…</div>';const {data,error}=await sb.rpc('volunteer_portal_needs',{p_token:guestToken,p_offer_key:guestOfferKey});if(error){box.innerHTML='<div class="card error">This volunteer link is invalid or no longer active.</div>';return}const rows=data||[];if(!rows.length){box.innerHTML='<div class="card muted">There are no open hospitality needs at the moment.</div>';return}const groups=new Map();for(const n of rows){const date=n.event_date_label||'Upcoming hospitality';if(!groups.has(date))groups.set(date,[]);groups.get(date).push(n)}box.innerHTML=[...groups.entries()].map(([date,needs])=>`<section class="guestneed" style="padding:0;overflow:hidden"><div style="padding:14px;background:#f7fafc;border-bottom:1px solid var(--line)"><b style="font-size:17px">${esc(date)}</b><div class="fieldhint">${needs.length} need${needs.length===1?'':'s'}</div></div>${needs.map(n=>`<div style="padding:12px 14px;border-top:1px solid #edf1f5"><div class="guestneedhead"><div><b>${esc(guestNeedLabel(n))}</b></div><span class="pill ${n.my_offer?'confirmed':'details_missing'}">${n.my_offer?'Offered':'Open'}</span></div><div class="volactions">${n.my_offer?`<button class="withdrawbtn" onclick="guestWithdraw('${esc(n.need_id)}')">Withdraw my offer</button>`:`<button class="offerbtn" onclick="guestOffer('${esc(n.need_id)}')">I can help</button>`}</div></div>`).join('')}</section>`).join('')}
+async function loadGuestNeeds(){
+ const box=$('guestNeeds');
+ box.innerHTML='<div class="card muted">Loading opportunities…</div>';
+
+ const {data,error}=await sb.rpc('volunteer_portal_needs',{
+  p_token:guestToken,
+  p_offer_key:guestOfferKey
+ });
+
+ if(error){
+  box.innerHTML='<div class="card error">This volunteer link is invalid or no longer active.</div>';
+  return;
+ }
+
+ const rows=data||[];
+
+ if(!rows.length){
+  box.innerHTML='<div class="card"><b>Everything is covered 🎉</b><div class="fieldhint">There are no open hospitality opportunities at the moment. Thank you for your willingness to help.</div></div>';
+  return;
+ }
+
+ const groups=new Map();
+
+ for(const n of rows){
+  const date=n.event_date_label||'Upcoming hospitality';
+  if(!groups.has(date))groups.set(date,[]);
+  groups.get(date).push(n);
+ }
+
+ const category=n=>{
+  const t=String(n.need_type||'').toLowerCase();
+  if(t.startsWith('meal_'))return {key:'meals',icon:'🍽️',label:'Meals'};
+  if(t==='accommodation')return {key:'accommodation',icon:'🏠',label:'Accommodation'};
+  if(t==='pickup'||t==='dropoff')return {key:'transport',icon:'🚗',label:'Transport'};
+  if(t==='city_visit'||t.startsWith('picnic_'))return {key:'activities',icon:'🌳',label:'Activities'};
+  if(t==='field_service')return {key:'ministry',icon:'🤝',label:'Field Service'};
+  return {key:'other',icon:'✨',label:'Other'};
+ };
+
+ const cards=[...groups.entries()].map(([date,needs],index)=>{
+
+  const first=needs[0]||{};
+  const speaker=first.speaker_name||'Visiting speaker';
+  const congregation=first.speaker_congregation||'';
+  const place=[first.speaker_city,first.speaker_country].filter(Boolean).join(', ');
+
+  const cats=new Map();
+
+  for(const n of needs){
+   const c=category(n);
+   if(!cats.has(c.key))cats.set(c.key,{...c,needs:[]});
+   cats.get(c.key).needs.push(n);
+  }
+
+  const offered=needs.filter(n=>n.my_offer).length;
+
+  const summary=[...cats.values()].map(c=>
+   `<span style="display:inline-flex;align-items:center;gap:4px;margin:3px 8px 3px 0">${c.icon} ${esc(c.label)} <b>${c.needs.length}</b></span>`
+  ).join('');
+
+  const body=[...cats.values()].map(c=>`
+   <div style="padding:13px 0;border-top:1px solid #edf1f5">
+    <div style="font-weight:800;margin-bottom:8px">${c.icon} ${esc(c.label)}</div>
+    <div style="display:grid;gap:8px">
+     ${c.needs.map(n=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 11px;border:1px solid ${n.my_offer?'#b7dfc5':'#e4e9ee'};border-radius:12px;background:${n.my_offer?'#f2fbf5':'#fff'}">
+       <div>
+        <b>${esc(guestNeedLabel(n))}</b>
+        <div class="fieldhint">${n.my_offer?'✓ You offered to help':'Available'}</div>
+       </div>
+       ${n.my_offer
+        ?`<button class="withdrawbtn" onclick="event.stopPropagation();guestWithdraw('${esc(n.need_id)}')">Withdraw</button>`
+        :`<button class="offerbtn" onclick="event.stopPropagation();guestOffer('${esc(n.need_id)}')">I can help</button>`
+       }
+      </div>
+     `).join('')}
+    </div>
+   </div>
+  `).join('');
+
+  return `
+   <details class="guestneed" ${index===0?'open':''} style="padding:0;overflow:hidden;margin-bottom:12px">
+    <summary style="list-style:none;cursor:pointer;padding:15px">
+     <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div>
+       <div style="font-size:12px;font-weight:800;color:#1684e8;text-transform:uppercase;letter-spacing:.5px">${esc(date)}</div>
+       <div style="font-size:18px;font-weight:850;margin-top:5px">👤 ${esc(speaker)}</div>
+       ${congregation?`<div class="fieldhint">${esc(congregation)}</div>`:''}
+       ${place?`<div class="fieldhint">📍 ${esc(place)}</div>`:''}
+      </div>
+      <span style="font-size:20px;color:#1684e8">⌄</span>
+     </div>
+
+     <div style="margin-top:12px">
+      <b>${needs.length} opportunit${needs.length===1?'y':'ies'} to help</b>
+      ${offered?`<span class="pill confirmed" style="margin-left:6px">${offered} offered</span>`:''}
+     </div>
+
+     <div style="margin-top:7px;font-size:12px;color:#667085">
+      ${summary}
+     </div>
+    </summary>
+
+    <div style="padding:0 15px 15px">
+     ${body}
+    </div>
+   </details>
+  `;
+ }).join('');
+
+ const myOffers=rows.filter(n=>n.my_offer);
+
+ box.innerHTML=`
+  ${myOffers.length?`
+   <div class="card" style="margin-bottom:14px;background:#f2fbf5;border-color:#b7dfc5">
+    <b>✓ My offers</b>
+    <div class="fieldhint" style="margin-top:4px">You have offered to help with ${myOffers.length} opportunit${myOffers.length===1?'y':'ies'}.</div>
+   </div>
+  `:''}
+
+  <div style="margin-bottom:10px">
+   <b style="font-size:18px">Upcoming opportunities</b>
+   <div class="fieldhint">Choose a visit to see where help is still needed.</div>
+  </div>
+
+  ${cards}
+ `;
+}
 async function guestOffer(needId){const n=saveGuestName();if(!n.first_name||!n.last_name){$('guestMsg').textContent='Please enter your first and last name first.';return}const {error}=await sb.rpc('volunteer_portal_offer',{p_token:guestToken,p_need_id:needId,p_first_name:n.first_name,p_last_name:n.last_name,p_offer_key:guestOfferKey});$('guestMsg').textContent=error?('Could not save your offer: '+error.message):'Thank you. Your offer has been sent to the Hospitality Coordinator.';if(!error)await loadGuestNeeds()}
 async function guestWithdraw(needId){const {error}=await sb.rpc('volunteer_portal_withdraw',{p_token:guestToken,p_need_id:needId,p_offer_key:guestOfferKey});$('guestMsg').textContent=error?('Could not withdraw your offer: '+error.message):'Your offer has been withdrawn.';if(!error)await loadGuestNeeds()}
 
