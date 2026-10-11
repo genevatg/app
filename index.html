@@ -2035,7 +2035,7 @@ function renderHospitalityActionCenter(future){
    <button class="quick-assign" ${totalOffers?'':'disabled'} onclick="bulkAssignAllSuggested()">Assign suggested</button>
    <button class="secondary" onclick="loadHospitality()">↻ Refresh</button>
  </div>`;
- const coordinationRows=rows.filter(x=>x.offered.length||x.assigned.length||x.open.length);
+ const coordinationRows=rows;
  const cards=coordinationRows.map(x=>{
    const t=x.v.public_talks,sp=Array.isArray(t.speakers)?t.speakers[0]:t.speakers;
    const date=new Date(t.talk_date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
