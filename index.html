@@ -852,7 +852,7 @@ async function loadGuestNeeds(){
     const d=needDate(n);
     return `
      <button
-      onclick="event.preventDefault();event.stopPropagation();${n.my_offer
+      onclick="event.stopPropagation();${n.my_offer
        ?`guestWithdraw('${esc(n.need_id)}')`
        :`guestOffer('${esc(n.need_id)}')`}"
       style="
