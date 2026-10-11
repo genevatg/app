@@ -849,7 +849,13 @@ async function loadGuestNeeds(){
 
   <div style="position:relative">
  <div id="needscroll-${esc(c.key)}-${index}" style="display:flex;gap:8px;overflow-x:auto;padding:2px 38px 7px 0;-webkit-overflow-scrolling:touch">
-   ${c.needs.map(n=>{
+   ${[...c.needs].sort((a,b)=>{
+  const getDate=n=>{
+    const m=String(n.need_type||'').match(/(\d{4}-\d{2}-\d{2})$/);
+    return m?m[1]:'9999-12-31';
+  };
+  return getDate(a).localeCompare(getDate(b));
+}).map(n=>{
     const d=needDate(n);
     return `
      <button
