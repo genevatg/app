@@ -2006,7 +2006,7 @@ function renderHospitalityActionCenter(future){
  box.innerHTML=`<div class="action-center-head"><div><div class="action-center-title">Volunteer responses</div><div class="action-center-sub">Loading volunteer responses…</div></div></div>`;
  try{
  const mergedVisits=new Map();
- (future||[]).forEach(v=>{
+ (hospitalityVisits||[]).filter(v=>v.public_talks?.talk_date>=appTodayLocalV3232()&&v.status==='planning').forEach(v=>{
    const t=v.public_talks||{}, sp=Array.isArray(t.speakers)?t.speakers[0]:t.speakers;
    const key=String(t.id||v.public_talk_id||v.talk_id||`${t.talk_date||''}|${sp?.full_name||''}`);
    if(!mergedVisits.has(key))mergedVisits.set(key,{v,visitIds:[]});
