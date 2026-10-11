@@ -799,7 +799,17 @@ async function loadGuestNeeds(){
   groups.get(date).push(n);
  }
 
- const category=n=>{
+ const needDate=n=>{
+ const m=String(n.need_type||'').match(/(\d{4}-\d{2}-\d{2})$/);
+ if(!m)return '';
+ const [y,mo,d]=m[1].split('-').map(Number);
+ return new Intl.DateTimeFormat('en-GB',{
+  weekday:'short',
+  day:'numeric',
+  month:'short'
+ }).format(new Date(y,mo-1,d));
+};
+  const category=n=>{
   const t=String(n.need_type||'').toLowerCase();
   if(t.startsWith('meal_'))return {key:'meals',icon:'🍽️',label:'Meals'};
   if(t==='accommodation')return {key:'accommodation',icon:'🏠',label:'Accommodation'};
@@ -831,24 +841,42 @@ async function loadGuestNeeds(){
   ).join('');
 
   const body=[...cats.values()].map(c=>`
-   <div style="padding:13px 0;border-top:1px solid #edf1f5">
-    <div style="font-weight:800;margin-bottom:8px">${c.icon} ${esc(c.label)}</div>
-    <div style="display:grid;gap:8px">
-     ${c.needs.map(n=>`
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 11px;border:1px solid ${n.my_offer?'#b7dfc5':'#e4e9ee'};border-radius:12px;background:${n.my_offer?'#f2fbf5':'#fff'}">
-       <div>
-        <b>${esc(guestNeedLabel(n))}</b>
-        <div class="fieldhint">${n.my_offer?'✓ You offered to help':'Available'}</div>
-       </div>
-       ${n.my_offer
-        ?`<button class="withdrawbtn" onclick="event.stopPropagation();guestWithdraw('${esc(n.need_id)}')">Withdraw</button>`
-        :`<button class="offerbtn" onclick="event.stopPropagation();guestOffer('${esc(n.need_id)}')">I can help</button>`
-       }
-      </div>
-     `).join('')}
-    </div>
-   </div>
-  `).join('');
+ <div style="padding:12px 0;border-top:1px solid #edf1f5">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px">
+   <b style="font-size:16px">${c.icon} ${esc(c.label)}</b>
+   <span class="fieldhint">${c.needs.length} option${c.needs.length===1?'':'s'}</span>
+  </div>
+
+  <div style="display:flex;gap:8px;overflow-x:auto;padding:2px 0 7px;-webkit-overflow-scrolling:touch">
+   ${c.needs.map(n=>{
+    const d=needDate(n);
+    return `
+     <button
+      onclick="event.preventDefault();event.stopPropagation();${n.my_offer
+       ?`guestWithdraw('${esc(n.need_id)}')`
+       :`guestOffer('${esc(n.need_id)}')`}"
+      style="
+       flex:0 0 auto;
+       min-width:118px;
+       padding:10px 12px;
+       border-radius:12px;
+       border:1px solid ${n.my_offer?'#86c99d':'#dce3ea'};
+       background:${n.my_offer?'#edf9f1':'#fff'};
+       color:#17212b;
+       text-align:left;
+       cursor:pointer;
+      ">
+       ${d?`<span style="display:block;font-size:11px;font-weight:800;color:#1684e8;margin-bottom:4px">${esc(d)}</span>`:''}
+       <span style="display:block;font-weight:800">${esc(guestNeedLabel(n))}</span>
+       <span style="display:block;font-size:11px;margin-top:3px;color:${n.my_offer?'#25834a':'#73808c'}">
+        ${n.my_offer?'✓ Offered':'Tap to help'}
+       </span>
+     </button>
+    `;
+   }).join('')}
+  </div>
+ </div>
+`).join('');
 
   return `
    <details class="guestneed" ${index===0?'open':''} style="padding:0;overflow:hidden;margin-bottom:12px">
