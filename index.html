@@ -848,7 +848,7 @@ async function loadGuestNeeds(){
   </div>
 
   <div style="position:relative">
- <div style="display:flex;gap:8px;overflow-x:auto;padding:2px 38px 7px 0;-webkit-overflow-scrolling:touch">
+ <div id="needscroll-${esc(c.key)}-${index}" style="display:flex;gap:8px;overflow-x:auto;padding:2px 38px 7px 0;-webkit-overflow-scrolling:touch">
    ${c.needs.map(n=>{
     const d=needDate(n);
     return `
@@ -858,8 +858,8 @@ async function loadGuestNeeds(){
        :`guestOffer('${esc(n.need_id)}')`}"
       style="
        flex:0 0 auto;
-       min-width:118px;
-       padding:10px 12px;
+       min-width:96px;
+       padding:8px 10px;
        border-radius:12px;
        border:1px solid ${n.my_offer?'#86c99d':'#dce3ea'};
        background:${n.my_offer?'#edf9f1':'#fff'};
@@ -881,7 +881,13 @@ async function loadGuestNeeds(){
     `;
    }).join('')}
   </div>
-  <div style="position:absolute;right:0;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.94);padding:8px 3px 8px 9px;font-size:22px;font-weight:800;color:#1684e8;pointer-events:none">→</div>
+  ${c.needs.length>3?`
+<div style="display:flex;justify-content:flex-end;align-items:center;gap:6px;margin-top:4px">
+  <button type="button" onclick="event.stopPropagation();document.getElementById('needscroll-${esc(c.key)}-${index}').scrollBy({left:-220,behavior:'smooth'})" style="border:0;background:transparent;color:#1684e8;font-size:18px;font-weight:800;padding:3px 7px">‹</button>
+  <span style="font-size:11px;color:#7b8794">More dates</span>
+  <button type="button" onclick="event.stopPropagation();document.getElementById('needscroll-${esc(c.key)}-${index}').scrollBy({left:220,behavior:'smooth'})" style="border:0;background:transparent;color:#1684e8;font-size:18px;font-weight:800;padding:3px 7px">›</button>
+</div>
+`:''}
 </div>
  </div>
 `).join('');
