@@ -847,7 +847,8 @@ async function loadGuestNeeds(){
    <span class="fieldhint">${c.needs.length} option${c.needs.length===1?'':'s'}</span>
   </div>
 
-  <div style="display:flex;gap:8px;overflow-x:auto;padding:2px 0 7px;-webkit-overflow-scrolling:touch">
+  <div style="position:relative">
+ <div style="display:flex;gap:8px;overflow-x:auto;padding:2px 38px 7px 0;-webkit-overflow-scrolling:touch">
    ${c.needs.map(n=>{
     const d=needDate(n);
     return `
@@ -869,12 +870,19 @@ async function loadGuestNeeds(){
        ${d?`<span style="display:block;font-size:11px;font-weight:800;color:#1684e8;margin-bottom:4px">${esc(d)}</span>`:''}
        <span style="display:block;font-weight:800">${esc(guestNeedLabel(n))}</span>
        <span style="display:block;font-size:11px;margin-top:3px;color:${n.my_offer?'#25834a':'#73808c'}">
-        ${n.my_offer?'✓ Offered':'Tap to help'}
-       </span>
+ ${n.my_offer?'✓ Offered':'Tap to help'}
+</span>
+<span style="display:block;font-size:10px;margin-top:5px;color:${Number(n.offer_count)>0?'#667085':'#98a2ad'}">
+ ${Number(n.offer_count)>0
+   ?`👥 ${Number(n.offer_count)} ${Number(n.offer_count)===1?'person':'people'} offered`
+   :'○ No offers yet'}
+</span>
      </button>
     `;
    }).join('')}
   </div>
+  <div style="position:absolute;right:0;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.94);padding:8px 3px 8px 9px;font-size:22px;font-weight:800;color:#1684e8;pointer-events:none">→</div>
+</div>
  </div>
 `).join('');
 
