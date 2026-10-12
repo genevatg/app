@@ -832,7 +832,8 @@ async function loadGuestNeeds(){
   const speaker=first.speaker_name||'Visiting speaker';
   const congregation=first.speaker_congregation||'';
   const place=[first.speaker_city,first.speaker_country].filter(Boolean).join(', ');
-
+const guests=Number(first.total_visitors||first.total_persons||0);
+   
   const cats=new Map();
 
   for(const n of needs){
@@ -912,8 +913,8 @@ async function loadGuestNeeds(){
       <div>
        <div style="font-size:12px;font-weight:800;color:#1684e8;text-transform:uppercase;letter-spacing:.5px">${esc(date)}</div>
        <div style="font-size:18px;font-weight:850;margin-top:5px">👤 ${esc(speaker)}</div>
-       ${congregation?`<div class="fieldhint">${esc(congregation)}</div>`:''}
        ${place?`<div class="fieldhint">📍 ${esc(place)}</div>`:''}
+       ${guests?`<div class="fieldhint">👥 ${guests} guest${guests===1?'':'s'} expected</div>`:''}
       </div>
       <span style="font-size:20px;color:#1684e8">⌄</span>
      </div>
