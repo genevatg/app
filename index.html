@@ -994,6 +994,7 @@ function previewTripDraft(){
 }
 function canHosp(){return ['admin','hospitality_coordinator'].includes(profile?.role)} function canTrips(){return ['admin','trip_coordinator'].includes(profile?.role)} function canVolunteer(){return ['admin','hospitality_coordinator','publisher'].includes(profile?.role)}
 async function sendMagic(){
+ alert('sendMagic started');
  const email=$('email').value.trim().toLowerCase();if(!email)return;
  const btn=document.querySelector('#auth button');
  if(btn)btn.disabled=true;
