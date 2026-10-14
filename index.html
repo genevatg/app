@@ -1984,7 +1984,7 @@ function openAssignmentWhatsApp(visitId,needId,mode){
  const a=n?activeAssignment(n):null;
  if(!v||!n||!a)return alert('Assignment details are not available.');
  const msg=mode==='replacement'?replacementWhatsAppText(v,n,a):assignmentWhatsAppText(v,n,a);
- window.open(whatsappTextUrl(msg),'_blank');
+ window.location.href=whatsappTextUrl(msg);
 }
 
 function requiredHospitalityNeeds(v){
