@@ -2003,8 +2003,7 @@ function openWithdrawalWhatsApp(visitId,needId){
  const v=(hospitalityVisits||[]).find(x=>String(x.id)===String(visitId));
  const n=(hospitalityNeeds||[]).find(x=>String(x.id)===String(needId));
  const a=n?activeAssignment(n):null;if(!v||!n||!a)return;
- window.open(whatsappTextUrl(withdrawalWhatsAppText(v,n,assignedDisplay(a))),'_blank');
-}
+ window.location.href=whatsappTextUrl(withdrawalWhatsAppText(v,n,assignedDisplay(a)));
 function toggleHospDisclosureV3182(id){
  const el=document.getElementById(id); if(el)el.classList.toggle('open');
 }
