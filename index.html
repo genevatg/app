@@ -2130,8 +2130,41 @@ function renderMeals(){const box=$('hMeals');if(!box)return;const dates=mealDate
 function displayNeedTitle(n){if(!n)return '';if(n.need_type?.startsWith('picnic_')){const d=n.need_type.slice(7);return new Date(d+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})+' · Picnic'}if(n.need_type?.startsWith('meal_')){const m=n.need_type.match(/^meal_(breakfast|lunch|dinner)_(\d{4}-\d{2}-\d{2})$/);if(m){const d=new Date(m[2]+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});return d+' · '+mealLabel(m[1])}}return n.title||n.need_type?.replaceAll('_',' ')||'Hospitality need'}
 function personName(id){const p=publisherProfiles.find(x=>x.id===id);return p?.full_name||p?.email||'Volunteer'}
 function assignmentManager(needId,type){
-  if(!canHosp()||!needId)return '';
-  return '';
+  if(!canHosp()||!needId)return '<div class="mealhint">Save first to enable volunteers & assignment.</div>';
+  const offers=volunteerOffers.filter(x=>x.need_id===needId&&x.status==='offered'),
+        guests=guestVolunteerOffers.filter(x=>x.need_id===needId&&x.status==='offered'),
+        a=volunteerAssignments.find(x=>x.need_id===needId&&x.active!==false);
+
+  const authOpts=offers.map(o=>{
+    const od=offerDetailV3226({
+      volunteer_comment:o.volunteer_comment,
+      host_capacity:o.host_capacity,
+      available_morning:o.available_morning,
+      available_afternoon:o.available_afternoon,
+      available_evening:o.available_evening
+    },{need_type:type});
+
+    return `<option value="profile:${esc(o.volunteer_id)}" ${a?.volunteer_id===o.volunteer_id?'selected':''}>${esc(personName(o.volunteer_id))}${od?' — '+esc(od):''} — ${esc(fairnessText(o.volunteer_id,type))}</option>`;
+  }).join('');
+
+  const guestOpts=guests.map(o=>
+    `<option value="guest:${esc(o.id)}" ${a?.guest_offer_id===o.id?'selected':''}>${esc(o.first_name+' '+o.last_name)} — guest volunteer</option>`
+  ).join('');
+
+  const count=offers.length+guests.length;
+
+  const assignedName=a?.guest_offer_id
+    ? (guestVolunteerOffers.find(x=>x.id===a.guest_offer_id)?.first_name+' '+guestVolunteerOffers.find(x=>x.id===a.guest_offer_id)?.last_name)
+    : personName(a?.volunteer_id);
+
+  return `<div class="assignbox">
+    <select class="field" id="assign_${needId}">
+      <option value="">${count?'Select volunteer':'No offers yet'}</option>
+      ${authOpts}${guestOpts}
+    </select>
+    <button class="mini" type="button" onclick="assignVolunteer('${needId}','${esc(type)}')">Assign</button>
+  </div>
+  ${a?`<div class="voloffer">Assigned: <b>${esc(assignedName||'Volunteer')}</b></div>`:count?`<div class="voloffer">${count} offer${count>1?'s':''} received</div>`:''}`;
 }
 function volunteerNeedGroupV3223(n){
  const raw=String(n.need_type||n.need_title||'').toLowerCase();
