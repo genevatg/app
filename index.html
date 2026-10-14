@@ -2002,7 +2002,7 @@ function withdrawalWhatsAppText(v,n,name){
 function openWithdrawalWhatsApp(visitId,needId){
  const v=(hospitalityVisits||[]).find(x=>String(x.id)===String(visitId));
  const n=(hospitalityNeeds||[]).find(x=>String(x.id)===String(needId));
- const a=n?activeAssignment(n):null;if(!v||!n||!a)return;
+ const a=n?activeAssignment(n):null;if(!v||!n||!a)return alert('Withdraw error: visit='+(!!v)+' need='+(!!n)+' assignment='+(!!a));
  location.assign(whatsappTextUrl(withdrawalWhatsAppText(v,n,assignedDisplay(a))));
 function toggleHospDisclosureV3182(id){
  const el=document.getElementById(id); if(el)el.classList.toggle('open');
