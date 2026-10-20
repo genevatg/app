@@ -2324,19 +2324,34 @@ async function saveNeeds(visitId){
     const typeDate=(String(type).match(/(\d{4}-\d{2}-\d{2})$/)||[])[1]||null;
     const need_date=dateInput?.value||typeDate||null;
 
-    const r=await sb
-      .from('hospitality_needs')
-      .upsert({
-        visit_id:visitId,
-        need_type:type,
-        title:type.replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase()),
-        importance,
-        status,
-        need_date,
-        updated_at:new Date().toISOString()
-      },{
-        onConflict:'visit_id,need_type'
-      });
+    let r;
+
+const existing=hospitalityNeeds.find(
+  x=>String(x.visit_id)===String(visitId)&&x.need_type===type
+);
+
+if(existing){
+  r=await sb
+    .from('hospitality_needs')
+    .update({
+      status,
+      importance,
+      need_date,
+      updated_at:new Date().toISOString()
+    })
+    .eq('id',existing.id);
+}else{
+  r=await sb
+    .from('hospitality_needs')
+    .insert({
+      visit_id:visitId,
+      need_type:type,
+      title:type.replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase()),
+      importance,
+      status,
+      need_date
+    });
+}
 
     if(r?.error)errors.push(type+': '+r.error.message);
   }
