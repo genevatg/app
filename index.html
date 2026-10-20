@@ -2007,6 +2007,45 @@ function openWithdrawalWhatsApp(visitId,needId){
  const a=n?activeAssignment(n):null;if(!v||!n||!a)return alert('Withdraw error: visit='+(!!v)+' need='+(!!n)+' assignment='+(!!a));
  location.assign(whatsappTextUrl(withdrawalWhatsAppText(v,n,assignedDisplay(a))));
 }
+  async function withdrawAssignment(visitId,needId){
+  const n=(hospitalityNeeds||[]).find(x=>String(x.id)===String(needId));
+  const a=n?activeAssignment(n):null;
+
+  if(!n||!a){
+    alert('Assignment not found.');
+    return;
+  }
+
+  if(!confirm('Withdraw this assignment and reopen the need?'))return;
+
+  const {error}=await sb
+    .from('hospitality_volunteer_assignments')
+    .update({
+      active:false,
+      updated_at:new Date().toISOString()
+    })
+    .eq('id',a.id);
+
+  if(error){
+    alert('Could not withdraw assignment: '+error.message);
+    return;
+  }
+
+  const {error:needError}=await sb
+    .from('hospitality_needs')
+    .update({
+      status:'open',
+      updated_at:new Date().toISOString()
+    })
+    .eq('id',needId);
+
+  if(needError){
+    alert('Assignment withdrawn, but need could not be reopened: '+needError.message);
+    return;
+  }
+
+  await loadHospitality();
+}
   function toggleHospDisclosureV3182(id){
  const el=document.getElementById(id); if(el)el.classList.toggle('open');
 }
@@ -2061,7 +2100,7 @@ function renderHospitalityActionCenter(future){
      <div class="action-meta">${x.offered.length?`<b>${x.offered.length} response${x.offered.length>1?'s':''} ready to assign</b>`:x.needs.length?(still.length?'No new volunteer responses':'✓ All current needs covered'):'Needs not created yet'}</div>
      ${offers}
      ${x.offered.length?`<button class="quick-assign visit-bulk" onclick="event.stopPropagation();bulkAssignMergedVisitV3227('${x.visitIds.join(',')}')">Assign suggested for this visit</button>`:''}
-     ${x.assigned.length?`<details class="coord-sub-v3227"><summary>Assigned · ${x.assigned.length}</summary><div class="action-summary">${x.assigned.map(n=>{const alts=alternateOffersForAssignedNeed(n);return `<div class="assigned-line"><span class="assignment-label-v3222">${esc(actionNeedName(n))} → <b>${esc(assignedDisplay(activeAssignment(n)))}</b></span><div class="assignment-actions-v3222"><button class="wa-assign" onclick="event.stopPropagation();openAssignmentWhatsApp('${x.v.id}','${n.id}','confirmation')" title="Send WhatsApp confirmation">💬 Confirm</button><button class="wa-withdraw" onclick="event.stopPropagation();openWithdrawalWhatsApp('${x.v.id}','${n.id}')" title="Send withdrawal message">↩ Withdraw</button>${alts.length?`<div class="alternate-box"><span class="other-offers-v3222">Other offers:</span><div class="replace-actions-v3222">${alts.map(a=>`<button class="secondary mini-replace" onclick="event.stopPropagation();replaceAssignmentFromOffer('${n.id}','${a.kind}','${a.id}')" title="Replace assignment with ${esc(a.name)}">⇄ ${esc(a.name)}${offerDetailV3226(a,n)?`<small>${esc(offerDetailV3226(a,n))}</small>`:''}</button>`).join('')}</div></div>`:''}</div>`;}).join('')}</div></details>`:''}
+     ${x.assigned.length?`<details class="coord-sub-v3227"><summary>Assigned · ${x.assigned.length}</summary><div class="action-summary">${x.assigned.map(n=>{const alts=alternateOffersForAssignedNeed(n);return `<div class="assigned-line"><span class="assignment-label-v3222">${esc(actionNeedName(n))} → <b>${esc(assignedDisplay(activeAssignment(n)))}</b></span><div class="assignment-actions-v3222"><button class="wa-assign" onclick="event.stopPropagation();openAssignmentWhatsApp('${x.v.id}','${n.id}','confirmation')" title="Send WhatsApp confirmation">💬 Confirm</button><button class="wa-withdraw" onclick="event.stopPropagation();withdrawAssignment('${x.v.id}','${n.id}')" title="Withdraw assignment">↩ Withdraw</button>${alts.length?`<div class="alternate-box"><span class="other-offers-v3222">Other offers:</span><div class="replace-actions-v3222">${alts.map(a=>`<button class="secondary mini-replace" onclick="event.stopPropagation();replaceAssignmentFromOffer('${n.id}','${a.kind}','${a.id}')" title="Replace assignment with ${esc(a.name)}">⇄ ${esc(a.name)}${offerDetailV3226(a,n)?`<small>${esc(offerDetailV3226(a,n))}</small>`:''}</button>`).join('')}</div></div>`:''}</div>`;}).join('')}</div></details>`:''}
      ${still.length?`<details class="coord-sub-v3227"><summary>Still needed · ${still.length}</summary><div class="action-summary">${esc(still.join(' · '))}</div></details>`:''}
      <div class="status-chips"><span class="status-chip">${x.open.length} open</span><span class="status-chip">${x.offered.length} offered</span><span class="status-chip">${x.assigned.length} assigned</span></div>
    </div>`;
