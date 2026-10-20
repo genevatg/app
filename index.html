@@ -2313,7 +2313,103 @@ function missingHospitalityFromForm(){const a=[];if(!$('hVisitors').value)a.push
 function openNeedsMessage(){const {v,sp}=currentVisitSpeaker();if(!v)return '';const rows=currentNeedRows().filter(x=>x.status==='open'),date=new Date(v.public_talks.talk_date+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});if(!rows.length)return `Hospitality update for ${sp?.full_name||'our visiting speaker'} on ${date}: there are currently no open volunteer needs. Thank you.`;const link=volunteerPortalUrl?`\n\nOpen Volunteer Portal:\n${volunteerPortalUrl}\n\nNo account is required. Simply enter your first and last name and select where you can help.`:'';return `Dear brothers and sisters, we are organizing hospitality for ${sp?.full_name||'our visiting speaker'} on ${date}. We are currently looking for help with: ${rows.map(x=>x.title).join(', ')}. If you are available to help with one or more of these needs, please use the Volunteer Portal.${link}\n\nThank you very much for your support.`}
 async function copyOpenNeeds(){const msg=openNeedsMessage();try{await navigator.clipboard.writeText(msg);$('hSaveMsg').textContent='Open-needs message copied.'}catch(e){$('hSaveMsg').textContent='Copy failed. You can still use Share open needs.'}}
 function shareOpenNeeds(){const msg=openNeedsMessage();window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank')}
-async function saveNeeds(visitId){const errors=[];for(const el of document.querySelectorAll('#hNeeds select[data-need-type], #hMeals select[data-need-type]')){const type=el.dataset.needType,status=el.value,importance=el.dataset.importance,existing=hospitalityNeeds.find(x=>String(x.visit_id)===String(visitId)&&x.need_type===type),dateInput=document.querySelector(`[data-need-date-for="${type}"]`),typeDate=(String(type).match(/(\d{4}-\d{2}-\d{2})$/)||[])[1]||null,need_date=dateInput?.value||typeDate||null;let r;if(existing){r=await sb.from('hospitality_needs').update({status,importance,need_date,updated_at:new Date().toISOString()}).eq('id',existing.id)}else{r=await sb.from('hospitality_needs').insert({visit_id:visitId,need_type:type,title:type.replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase()),importance,status,need_date})}if(r?.error)errors.push(type+': '+r.error.message)}const priorPicnics=hospitalityNeeds.filter(x=>String(x.visit_id)===String(visitId)&&x.need_type?.startsWith('picnic_'));if($('hPicnicEnabled')?.value==='yes'){const d=$('hPicnicDate').value,type=picnicNeedType(d),loc=$('hPicnicLocation').value==='Other location'?($('hPicnicOther').value.trim()||'Other location'):$('hPicnicLocation').value,title='Picnic · '+loc,existing=priorPicnics.find(x=>x.need_type===type);for(const p of priorPicnics.filter(x=>x.id!==existing?.id))await sb.from('hospitality_needs').update({status:'not_required',updated_at:new Date().toISOString()}).eq('id',p.id);let pr;if(existing)pr=await sb.from('hospitality_needs').update({title,status:existing.status==='not_required'?'open':existing.status,importance:'nice_to_have',need_date:d,updated_at:new Date().toISOString()}).eq('id',existing.id);else pr=await sb.from('hospitality_needs').insert({visit_id:visitId,need_type:type,title,importance:'nice_to_have',status:'open',need_date:d});if(pr?.error)errors.push('picnic: '+pr.error.message);const lunch=mealNeedType('lunch',d),lunchEl=[...document.querySelectorAll('#hMeals select[data-need-type]')].find(x=>x.dataset.needType===lunch);if(lunchEl&&lunchEl.value!=='not_required'){lunchEl.value='not_required';const ln=hospitalityNeeds.find(x=>String(x.visit_id)===String(visitId)&&x.need_type===lunch);if(ln)await sb.from('hospitality_needs').update({status:'not_required',updated_at:new Date().toISOString()}).eq('id',ln.id)}}else{for(const p of priorPicnics)await sb.from('hospitality_needs').update({status:'not_required',updated_at:new Date().toISOString()}).eq('id',p.id)}return errors}
+async function saveNeeds(visitId){
+  const errors=[];
+
+  for(const el of document.querySelectorAll('#hNeeds select[data-need-type], #hMeals select[data-need-type]')){
+    const type=el.dataset.needType;
+    const status=el.value;
+    const importance=el.dataset.importance;
+    const dateInput=document.querySelector(`[data-need-date-for="${type}"]`);
+    const typeDate=(String(type).match(/(\d{4}-\d{2}-\d{2})$/)||[])[1]||null;
+    const need_date=dateInput?.value||typeDate||null;
+
+    const r=await sb
+      .from('hospitality_needs')
+      .upsert({
+        visit_id:visitId,
+        need_type:type,
+        title:type.replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase()),
+        importance,
+        status,
+        need_date,
+        updated_at:new Date().toISOString()
+      },{
+        onConflict:'visit_id,need_type'
+      });
+
+    if(r?.error)errors.push(type+': '+r.error.message);
+  }
+
+  const priorPicnics=hospitalityNeeds.filter(
+    x=>String(x.visit_id)===String(visitId)&&x.need_type?.startsWith('picnic_')
+  );
+
+  if($('hPicnicEnabled')?.value==='yes'){
+    const d=$('hPicnicDate').value;
+    const type=picnicNeedType(d);
+    const loc=$('hPicnicLocation').value==='Other location'
+      ?($('hPicnicOther').value.trim()||'Other location')
+      :$('hPicnicLocation').value;
+    const title='Picnic · '+loc;
+
+    for(const p of priorPicnics.filter(x=>x.need_type!==type)){
+      await sb
+        .from('hospitality_needs')
+        .update({
+          status:'not_required',
+          updated_at:new Date().toISOString()
+        })
+        .eq('id',p.id);
+    }
+
+    const pr=await sb
+      .from('hospitality_needs')
+      .upsert({
+        visit_id:visitId,
+        need_type:type,
+        title,
+        importance:'nice_to_have',
+        status:'open',
+        need_date:d,
+        updated_at:new Date().toISOString()
+      },{
+        onConflict:'visit_id,need_type'
+      });
+
+    if(pr?.error)errors.push('picnic: '+pr.error.message);
+
+    const lunch=mealNeedType('lunch',d);
+    const lunchEl=[...document.querySelectorAll('#hMeals select[data-need-type]')]
+      .find(x=>x.dataset.needType===lunch);
+
+    if(lunchEl&&lunchEl.value!=='not_required'){
+      lunchEl.value='not_required';
+
+      await sb
+        .from('hospitality_needs')
+        .update({
+          status:'not_required',
+          updated_at:new Date().toISOString()
+        })
+        .eq('visit_id',visitId)
+        .eq('need_type',lunch);
+    }
+
+  }else{
+    for(const p of priorPicnics){
+      await sb
+        .from('hospitality_needs')
+        .update({
+          status:'not_required',
+          updated_at:new Date().toISOString()
+        })
+        .eq('id',p.id);
+    }
+  }
+
+  return errors;
+}
 function openHospitality(id){const v=hospitalityVisits.find(x=>x.id===id);if(!v)return;const t=v.public_talks,joinedSp=Array.isArray(t.speakers)?t.speakers[0]:t.speakers;let sp=speakers.find(s=>String(s.id)===String(t.speaker_id))||joinedSp;if(t.admin_status==='special_event'){sp={...(sp||{}),full_name:t.special_event_contact_name||hospitalityDisplayNameV3247e(t,sp||{}),phone:t.special_event_contact_phone||''}};$('hVisitId').value=v.id;$('hospHeading').textContent=hospitalityDisplayNameV3247e(t,sp)+' · '+new Date(t.talk_date+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});$('hVisitors').value=v.total_visitors||t.total_persons||'';$('hArrivalMode').value=v.arrival_mode||'';$('hArrivalDate').value=v.arrival_date||'';$('hArrivalTime').value=(v.arrival_time||'').slice(0,5);$('hArrivalPlace').value=v.arrival_place||'';$('hDepartureMode').value=v.departure_mode||'';$('hDepartureDate').value=v.departure_date||'';$('hDepartureTime').value=(v.departure_time||'').slice(0,5);$('hDeparturePlace').value=v.departure_place||'';$('hAccommodation').value=v.accommodation_needed===true?'yes':v.accommodation_needed===false?'no':'';$('hNights').value=v.nights??'';$('hDiet').value=v.dietary_requirements||'';$('hNotes').value=v.hospitality_notes||'';const home=[sp?.city,sp?.state_region,sp?.country].filter(Boolean).join(', ');if(!v.departure_mode&&v.arrival_mode)$('hDepartureMode').value=v.arrival_mode;if(home&&!v.arrival_place)$('hArrivalPlace').value=home;if(home&&!v.departure_place)$('hDeparturePlace').value=home;updateTransportUI();syncDepartureDateFromArrival();renderNeeds(v);renderMeals();renderPicnic();const phone=sp?.phone||'';$('hSpeakerContact').innerHTML=`<div class="speaker-contact-v323"><div><b>Speaker contact</b><br><strong>${esc(sp?.full_name||'')}</strong> ${phone?'· '+esc(phone):'· Phone not recorded'}</div><div class="hospactions">${phone?`<button class="mini wa" onclick="openSpeakerWhatsApp('${esc(phone)}')">WhatsApp</button>`:''}<button class="mini request-info-v3253" onclick="openInfoRequestV3253('${esc(v.id)}')">Request information</button></div></div>`;const w=monthWeatherGuidance(t.talk_date);$('hWeather').innerHTML=`<b>Historical weather guidance</b><div class="muted">Long-range guidance — this is not a forecast.</div><div style="margin-top:7px"><b>${w.temp}</b> · ${esc(w.conditions)}</div><div class="fieldhint">Clothing: ${esc(w.clothes)}. When the visit is close enough, this panel can switch to the live forecast.</div>`;renderCommunication(v,sp,w);$('hospModal').classList.add('open');setTimeout(updateHospitalityReadiness,0)}
 function closeHospitality(){$('hospModal').classList.remove('open')}
 function openSpeakerWhatsApp(phone){const p=String(phone||'').replace(/[^0-9]/g,'');if(p)window.open('https://wa.me/'+p,'_blank')}
