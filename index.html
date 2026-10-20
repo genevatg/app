@@ -1815,6 +1815,14 @@ function hospitalityDisplayNameV3247e(t,sp){
 function missingHospitality(v){const a=[];if(!v.total_visitors)a.push('number of visitors');if(!v.arrival_mode)a.push('means of arrival');if(!v.arrival_date)a.push('arrival date');if(!v.arrival_time)a.push('arrival time');if(!v.arrival_place)a.push('arrival place');if(!v.departure_date)a.push('departure date');if(!v.departure_time)a.push('departure time');return a}
 async function loadHospitality(){renderModuleTasksV3251('hospitality');
  if(!canHosp())return;
+ const {data:{user:debugUser}}=await sb.auth.getUser();
+alert(
+  'Hospitality session debug\n'+
+  'auth uid='+(debugUser?.id||'NONE')+'\n'+
+  'auth email='+(debugUser?.email||'NONE')+'\n'+
+  'profile id='+(profile?.id||'NONE')+'\n'+
+  'profile role='+(profile?.role||'NONE')
+);                                
  $('hospitalityList').innerHTML='<div class="card muted">Loading Hospitality from Supabase…</div>';
  const [vr,mt,cm,nr,or,ar,pr,gr]=await Promise.all([
   sb.from('hospitality_visit_details').select('*,public_talks(id,talk_date,total_persons,speaker_id,admin_status,event_title,special_event_contact_name,special_event_contact_phone,special_event_start_date,special_event_end_date,speakers(full_name,congregation,city,state_region,country,phone,email))').order('created_at'),
