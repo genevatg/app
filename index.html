@@ -2339,7 +2339,17 @@ async function saveNeeds(visitId){
 const existing=hospitalityNeeds.find(
   x=>String(x.visit_id)===String(visitId)&&x.need_type===type
 );
-
+if(type==='accommodation'){
+  alert(
+    'SAVE Accommodation debug\n'+
+    'visitId='+visitId+'\n'+
+    'needs loaded='+hospitalityNeeds.length+'\n'+
+    'existing='+(!!existing)+'\n'+
+    'existing id='+(existing?.id||'NONE')+'\n'+
+    'existing status='+(existing?.status||'NONE')+'\n'+
+    'selected status='+status
+  );
+}
 if(existing){
   r=await sb
     .from('hospitality_needs')
