@@ -1838,7 +1838,17 @@ alert(
   'Needs query debug\n'+
   'error='+(nr.error?.message||'NONE')+'\n'+
   'rows='+(nr.data?.length??'NULL')
-);                                
+);       
+   const debugAccommodation=(nr.data||[]).find(
+  x=>String(x.visit_id)==='31608071-22ec-4d7e-8d65-993eb8d81004'
+    && x.need_type==='accommodation'
+);
+alert(
+  'Accommodation query debug\n'+
+  'found='+(!!debugAccommodation)+'\n'+
+  'id='+(debugAccommodation?.id||'NONE')+'\n'+
+  'status='+(debugAccommodation?.status||'NONE')
+);                              
  if(vr.error){
   $('hospitalitySummary').innerHTML='';
   $('hospitalityActionCenter').innerHTML='';
