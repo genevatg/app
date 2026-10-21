@@ -2155,7 +2155,25 @@ function defaultNeedDateV323(v,type){
 function renderNeeds(v){
  const types=[['accommodation','Accommodation','essential'],['pickup','Pickup','essential'],['dropoff','Drop-off','essential'],['city_visit','City visit','nice_to_have'],['field_service','Field service','nice_to_have']];
  const rows=types.map(([type,title,importance])=>{
-   const n=hospitalityNeeds.find(x=>String(x.visit_id)===String(v.id)&&x.need_type===type),defaultStatus=(type==='field_service'||type==='city_visit')?'not_required':'open',status=n?.status||defaultStatus,date=n?.need_date||defaultNeedDateV323(v,type);
+   const n=hospitalityNeeds.find(
+  x=>String(x.visit_id)===String(v.id)&&x.need_type===type
+);
+
+const hasActiveAssignment=n
+  ? volunteerAssignments.some(
+      a=>String(a.need_id)===String(n.id)&&a.active===true
+    )
+  : false;
+
+const defaultStatus=(type==='field_service'||type==='city_visit')
+  ? 'not_required'
+  : 'open';
+
+const status=hasActiveAssignment
+  ? 'assigned'
+  : (n?.status||defaultStatus);
+
+const date=n?.need_date||defaultNeedDateV323(v,type);
    return `<div class="needrow"><div class="needhead"><div><b>${title}</b><div class="fieldhint">${importance.replaceAll('_',' ')}</div></div><select class="field" style="width:auto;padding:8px" data-need-type="${type}" data-importance="${importance}" onchange="updateHospitalityReadiness()"><option value="open" ${status==='open'?'selected':''}>Open</option><option value="not_required" ${status==='not_required'?'selected':''}>Not required</option><option value="offers_received" ${status==='offers_received'?'selected':''}>Offers received</option><option value="assigned" ${status==='assigned'?'selected':''}>Assigned</option><option value="completed" ${status==='completed'?'selected':''}>Completed</option></select></div><div class="need-date-v323"><label>Day</label><input class="field" type="date" data-need-date-for="${type}" value="${esc(date||'')}"></div>${assignmentManager(n?.id,type)}</div>`
  }).join('');
  $('hNeeds').innerHTML=rows;setTimeout(updateHospitalityReadiness,0)
