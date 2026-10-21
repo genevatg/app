@@ -1834,6 +1834,11 @@ alert(
   sb.from('profiles').select('id,full_name,email,role,active').eq('active',true),
   sb.rpc('volunteer_manager_guest_offers')
  ]);
+ alert(
+  'Needs query debug\n'+
+  'error='+(nr.error?.message||'NONE')+'\n'+
+  'rows='+(nr.data?.length??'NULL')
+);                                
  if(vr.error){
   $('hospitalitySummary').innerHTML='';
   $('hospitalityActionCenter').innerHTML='';
