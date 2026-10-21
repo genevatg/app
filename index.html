@@ -1836,7 +1836,14 @@ async function loadHospitality(){renderModuleTasksV3251('hospitality');
  hospitalityVisits=raw.filter(v=>v.public_talks);
  const hiddenJoins=raw.length-hospitalityVisits.length;
  hospitalityTemplates=mt.data||[];hospitalityComms=cm.data||[];
- hospitalityNeeds=nr.error?[]:(nr.data||[]);volunteerOffers=or.error?[]:(or.data||[]);
+ if(nr.error){
+  $('hospitalityList').innerHTML=
+    '<div class="card error"><b>Hospitality needs could not be loaded.</b><br>'+
+    esc(nr.error.message)+
+    '<div class="fieldhint">No hospitality changes have been made. Please refresh and try again.</div></div>';
+  return;
+}
+hospitalityNeeds=nr.data||[];volunteerOffers=or.error?[]:(or.data||[]);
 volunteerAssignments=ar.error?[]:(ar.data||[]);publisherProfiles=pr.error?[]:(pr.data||[]);
  guestVolunteerOffers=gr.error?[]:(gr.data||[]);
  renderHospitality();
