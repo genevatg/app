@@ -1860,7 +1860,18 @@ alert(
  const hiddenJoins=raw.length-hospitalityVisits.length;
  hospitalityTemplates=mt.data||[];hospitalityComms=cm.data||[];
  hospitalityNeeds=nr.error?[]:(nr.data||[]);volunteerOffers=or.error?[]:(or.data||[]);
- volunteerAssignments=ar.error?[]:(ar.data||[]);publisherProfiles=pr.error?[]:(pr.data||[]);
+const debugStoredAccommodation=hospitalityNeeds.find(
+  x=>String(x.visit_id)==='31608071-22ec-4d7e-8d65-993eb8d81004'
+    && x.need_type==='accommodation'
+);
+
+alert(
+  'Stored needs debug\n'+
+  'total='+(hospitalityNeeds?.length||0)+'\n'+
+  'found='+(!!debugStoredAccommodation)+'\n'+
+  'status='+(debugStoredAccommodation?.status||'NONE')
+);
+volunteerAssignments=ar.error?[]:(ar.data||[]);publisherProfiles=pr.error?[]:(pr.data||[]);
  guestVolunteerOffers=gr.error?[]:(gr.data||[]);
  renderHospitality();
  if(canVolunteer()) await loadVolunteerBoard();
