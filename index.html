@@ -2321,9 +2321,9 @@ async function loadVolunteerBoard(){
    sb.from('hospitality_visit_details').select('id,public_talks(talk_date,speakers(full_name))')
  ]);
  if(nr.error){$('volunteerList').innerHTML='<div class="card error">Volunteer setup required: '+esc(nr.error.message)+'</div>';return}
- hospitalityNeeds=nr.data||[]; volunteerOffers=or.error?[]:(or.data||[]); volunteerAssignments=ar.error?[]:(ar.data||[]);
+ const volunteerBoardNeeds=nr.data||[]; volunteerOffers=or.error?[]:(or.data||[]); volunteerAssignments=ar.error?[]:(ar.data||[]);
  const visits=vr.error?[]:(vr.data||[]);
- const visible=hospitalityNeeds.filter(n=>n.status!=='assigned'||volunteerAssignments.some(a=>a.need_id===n.id&&a.volunteer_id===profile.id&&a.active!==false));
+ const visible=volunteerBoardNeeds.filter(n=>n.status!=='assigned'||volunteerAssignments.some(a=>a.need_id===n.id&&a.volunteer_id===profile.id&&a.active!==false));
  const groups=new Map();
  visible.forEach(n=>{
    const v=visits.find(x=>x.id===n.visit_id),t=v?.public_talks,sp=Array.isArray(t?.speakers)?t.speakers[0]:t?.speakers;
