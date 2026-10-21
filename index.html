@@ -2377,19 +2377,35 @@ if(existing){
         .eq('id',p.id);
     }
 
-    const pr=await sb
-      .from('hospitality_needs')
-      .upsert({
-        visit_id:visitId,
-        need_type:type,
-        title,
-        importance:'nice_to_have',
-        status:'open',
-        need_date:d,
-        updated_at:new Date().toISOString()
-      },{
-        onConflict:'visit_id,need_type'
-      });
+    const existingPicnic=hospitalityNeeds.find(
+  x=>String(x.visit_id)===String(visitId)&&x.need_type===type
+);
+
+let pr;
+
+if(existingPicnic){
+  pr=await sb
+    .from('hospitality_needs')
+    .update({
+      title,
+      importance:'nice_to_have',
+      status:'open',
+      need_date:d,
+      updated_at:new Date().toISOString()
+    })
+    .eq('id',existingPicnic.id);
+}else{
+  pr=await sb
+    .from('hospitality_needs')
+    .insert({
+      visit_id:visitId,
+      need_type:type,
+      title,
+      importance:'nice_to_have',
+      status:'open',
+      need_date:d
+    });
+}
 
     if(pr?.error)errors.push('picnic: '+pr.error.message);
 
