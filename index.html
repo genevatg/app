@@ -1385,7 +1385,7 @@ function editTalkCatalogV3242(n){
  $('tcHistoryV3242').innerHTML='<b>'+h.length+' time'+(h.length===1?'':'s')+' since 2024</b>'+(h.length?'<div class="history-list-v3242">'+h.map(v=>`<span>${esc(v.talk_date)} · ${esc(v.speaker_name||'Speaker not recorded')}</span>`).join('')+'</div>':'<div class="fieldhint">No recorded delivery since 2024.</div>');m.classList.add('open');
 }
 async function saveTalkCatalogV3242(){
- const n=Number($('tcNumV3242').value),blocked=$('tcStatusV3242').value==='blocked',payload={title:$('tcNameV3242').value.trim(),active:true,unavailable_from:blocked?($('tcFromV3242').value||null):null,unavailable_until:blocked?($('tcUntilV3242').value||null):null};
+ const n=Number($('tcNumV3242').value),status=$('tcStatusV3242').value,blocked=status==='blocked',archived=status==='archived',payload={title:$('tcNameV3242').value.trim(),active:!archived,unavailable_from:blocked?($('tcFromV3242').value||null):null,unavailable_until:blocked?($('tcUntilV3242').value||null):null};
  const r=await sb.from('talk_catalog').update(payload).eq('talk_number',n);if(r.error){alert('Unable to save talk: '+r.error.message);return}await loadAll();$('talkCatalogEditorV3242').classList.remove('open');renderTalkCatalogV3242();
 }
 let commFilterV3244='speaker';
