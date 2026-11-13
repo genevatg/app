@@ -841,7 +841,7 @@ async function loadGuestNeeds(){
  const ordered=[...groups.entries()].sort((a,b)=>visitDay(a).localeCompare(visitDay(b)));
  const upcoming=ordered.filter(x=>visitDay(x)>=todayZurich);
  const past=ordered.filter(x=>visitDay(x)<todayZurich);
- const renderGuestCards=(entries)=>entries.map(([date,needs],index)=>{
+ const renderGuestCards=(entries,isArchive=false)=>entries.map(([date,needs],index)=>{
 
   const first=needs[0]||{};
   const speaker=first.speaker_name||'Visiting speaker';
@@ -871,7 +871,7 @@ const guests=Number(first.total_visitors||first.total_persons||0);
   </div>
 
   <div style="position:relative">
- <div id="needscroll-${esc(c.key)}-${index}" style="display:flex;gap:8px;overflow-x:auto;padding:2px 38px 7px 0;-webkit-overflow-scrolling:touch">
+ <div id="needscroll-${isArchive?'archive-':'upcoming-'}${esc(c.key)}-${index}" style="display:flex;gap:8px;overflow-x:auto;padding:2px 38px 7px 0;-webkit-overflow-scrolling:touch">
    ${[...c.needs].sort((a,b)=>{
   const getDate=n=>{
     const m=String(n.need_type||'').match(/(\d{4}-\d{2}-\d{2})$/);
@@ -882,9 +882,9 @@ const guests=Number(first.total_visitors||first.total_persons||0);
     const d=needDate(n);
     return `
      <button
-      onclick="event.stopPropagation();${n.my_offer
+      ${isArchive?'disabled aria-disabled="true"':`onclick="event.stopPropagation();${n.my_offer
        ?`guestWithdraw('${esc(n.need_id)}')`
-       :`guestOffer('${esc(n.need_id)}')`}"
+       :`guestOffer('${esc(n.need_id)}')`}"`}
       style="
        flex:0 0 auto;
        min-width:96px;
@@ -894,12 +894,13 @@ const guests=Number(first.total_visitors||first.total_persons||0);
        background:${n.my_offer?'#edf9f1':'#fff'};
        color:#17212b;
        text-align:left;
-       cursor:pointer;
+       cursor:${isArchive?'default':'pointer'};
+       opacity:${isArchive?'.65':'1'};
       ">
        ${d?`<span style="display:block;font-size:11px;font-weight:800;color:#1684e8;margin-bottom:4px">${esc(d)}</span>`:''}
        <span style="display:block;font-weight:800">${esc(guestNeedLabel(n))}</span>
        <span style="display:block;font-size:11px;margin-top:3px;color:${n.my_offer?'#25834a':'#73808c'}">
- ${n.my_offer?'✓ Offered':'Tap to help'}
+ ${isArchive?'Past event':n.my_offer?'✓ Offered':'Tap to help'}
 </span>
 <span style="display:block;font-size:10px;margin-top:5px;color:${Number(n.offer_count)>0?'#667085':'#98a2ad'}">
  ${Number(n.offer_count)>0
@@ -912,9 +913,9 @@ const guests=Number(first.total_visitors||first.total_persons||0);
   </div>
   ${c.needs.length>3?`
 <div style="display:flex;justify-content:flex-end;align-items:center;gap:6px;margin-top:4px">
-  <button type="button" onclick="event.stopPropagation();document.getElementById('needscroll-${esc(c.key)}-${index}').scrollBy({left:-220,behavior:'smooth'})" style="border:0;background:transparent;color:#1684e8;font-size:18px;font-weight:800;padding:3px 7px">‹</button>
+  <button type="button" onclick="event.stopPropagation();document.getElementById('needscroll-${isArchive?'archive-':'upcoming-'}${esc(c.key)}-${index}').scrollBy({left:-220,behavior:'smooth'})" style="border:0;background:transparent;color:#1684e8;font-size:18px;font-weight:800;padding:3px 7px">‹</button>
   <span style="font-size:11px;color:#7b8794">More dates</span>
-  <button type="button" onclick="event.stopPropagation();document.getElementById('needscroll-${esc(c.key)}-${index}').scrollBy({left:220,behavior:'smooth'})" style="border:0;background:transparent;color:#1684e8;font-size:18px;font-weight:800;padding:3px 7px">›</button>
+  <button type="button" onclick="event.stopPropagation();document.getElementById('needscroll-${isArchive?'archive-':'upcoming-'}${esc(c.key)}-${index}').scrollBy({left:220,behavior:'smooth'})" style="border:0;background:transparent;color:#1684e8;font-size:18px;font-weight:800;padding:3px 7px">›</button>
 </div>
 `:''}
 </div>
@@ -922,7 +923,7 @@ const guests=Number(first.total_visitors||first.total_persons||0);
 `).join('');
 
   return `
-   <details class="guestneed" ${index===0?'open':''} style="padding:0;overflow:hidden;margin-bottom:12px">
+   <details class="guestneed" ${!isArchive&&index===0?'open':''} style="padding:0;overflow:hidden;margin-bottom:12px">
     <summary style="list-style:none;cursor:pointer;padding:15px">
      <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
       <div>
@@ -952,8 +953,8 @@ const guests=Number(first.total_visitors||first.total_persons||0);
  }).join('');
 
  const cards=renderGuestCards(upcoming);
- const archiveCards=renderGuestCards([...past].reverse());
- const myOffers=rows.filter(n=>n.my_offer);
+ const archiveCards=renderGuestCards([...past].reverse(),true);
+ const myOffers=upcoming.flatMap(([,needs])=>needs).filter(n=>n.my_offer);
 
  box.innerHTML=`
   ${myOffers.length?`
