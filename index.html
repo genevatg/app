@@ -94,6 +94,7 @@ nav{position:fixed;z-index:6;bottom:0;left:0;right:0;padding:8px 10px calc(8px +
 .hosp-volunteer-body-v3281{padding:0 12px 12px}
 .hosp-volunteer-head-v3281{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
 .hosp-volunteer-head-v3281 button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 10px;color:#1684e8}
+.guestportal header{padding:calc(12px + env(safe-area-inset-top)) 14px 12px}.guestportal .headrow{width:100%;min-width:0;gap:10px}.guestportal .brand{min-width:0;flex:1}.guestportal .brand b{font-size:clamp(15px,4vw,20px);line-height:1.2}.guestportal .brand span{font-size:11px}.guestportal .userchip{flex:0 0 auto;white-space:nowrap;font-size:11px}.guestportal .guestwrap{width:100%;max-width:620px;box-sizing:border-box}@media(max-width:390px){.guestportal header{padding-left:10px;padding-right:10px}.guestportal .userchip{font-size:10px;padding:6px 8px}}
 </style>
 <style>
 .trip-create-actions{display:grid;grid-template-columns:1fr 1.35fr;gap:8px;margin-top:12px}.trip-suggestions{position:absolute;left:0;right:0;top:100%;z-index:60;background:#fff;border:1px solid #cad7e3;border-radius:12px;box-shadow:0 12px 28px rgba(20,45,70,.16);max-height:240px;overflow:auto}.trip-suggestion{padding:10px 12px;border-bottom:1px solid #edf1f5;cursor:pointer;font-size:14px}.trip-suggestion:last-child{border-bottom:0}.trip-suggestion:active{background:#eef5fb}#tripRouteInfo{min-height:18px;margin-top:6px;line-height:1.35}
@@ -827,7 +828,20 @@ async function loadGuestNeeds(){
   return {key:'other',icon:'✨',label:'Other'};
  };
 
- const cards=[...groups.entries()].map(([date,needs],index)=>{
+ const todayZurich=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Zurich',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+ const visitDay=([label,needs])=>{
+  const n=needs[0]||{};
+  const raw=n.event_date||n.talk_date||n.visit_date||'';
+  if(/^\d{4}-\d{2}-\d{2}/.test(String(raw)))return String(raw).slice(0,10);
+  const parsed=Date.parse(String(label).replace(/^(MON|TUE|WED|THU|FRI|SAT|SUN)\s+/i,''));
+  if(Number.isFinite(parsed))return new Date(parsed).toISOString().slice(0,10);
+  const dates=needs.flatMap(x=>[...String(x.need_type||'').matchAll(/\d{4}-\d{2}-\d{2}/g)].map(m=>m[0]));
+  return dates.sort()[0]||'9999-12-31';
+ };
+ const ordered=[...groups.entries()].sort((a,b)=>visitDay(a).localeCompare(visitDay(b)));
+ const upcoming=ordered.filter(x=>visitDay(x)>=todayZurich);
+ const past=ordered.filter(x=>visitDay(x)<todayZurich);
+ const renderGuestCards=(entries)=>entries.map(([date,needs],index)=>{
 
   const first=needs[0]||{};
   const speaker=first.speaker_name||'Visiting speaker';
@@ -937,6 +951,8 @@ const guests=Number(first.total_visitors||first.total_persons||0);
   `;
  }).join('');
 
+ const cards=renderGuestCards(upcoming);
+ const archiveCards=renderGuestCards([...past].reverse());
  const myOffers=rows.filter(n=>n.my_offer);
 
  box.innerHTML=`
@@ -952,7 +968,8 @@ const guests=Number(first.total_visitors||first.total_persons||0);
    <div class="fieldhint">Choose a visit to see where help is still needed.</div>
   </div>
 
-  ${cards}
+  ${cards||'<div class="card muted">No upcoming hospitality needs at the moment.</div>'}
+  ${past.length?'<details class="card" style="margin-top:18px"><summary style="cursor:pointer;font-weight:800">📁 Past hospitality ('+past.length+')</summary><div style="margin-top:12px">'+archiveCards+'</div></details>':''}
  `;
 }
 async function guestOffer(needId){const n=saveGuestName();if(!n.first_name||!n.last_name){$('guestMsg').textContent='Please enter your first and last name first.';return}const {error}=await sb.rpc('volunteer_portal_offer',{p_token:guestToken,p_need_id:needId,p_first_name:n.first_name,p_last_name:n.last_name,p_offer_key:guestOfferKey});$('guestMsg').textContent=error?('Could not save your offer: '+error.message):'Thank you. Your offer has been sent to the Hospitality Coordinator.';if(!error)await loadGuestNeeds()}
